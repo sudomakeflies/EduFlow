@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduProfe: Matemáticas y Física</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="app.js"></script>
+</head>
+<body>
+    <header>
+        <h1>EduProfe: Matemáticas y Física</h1>
+    </header>
+
+    <main>
+        <section id="upload-section">
+            <h2>Importar Planes de Área</h2>
+            <input type="file" id="json-file" accept="application/json">
+            <button id="import-btn">Importar</button>
+        </section>
+
+        <section id="plan-display" style="display: none;">
+            <h2>Planes de Área</h2>
+            <div id="plan-container"></div>
+        </section>
+
+        <section id="student-section">
+            <h2>Gestión de Estudiantes</h2>
+            <button id="add-student-btn">Agregar Estudiante</button>
+            <ul id="student-list"></ul>
+        </section>
+
+        <section id="activity-section">
+            <h2>Actividades</h2>
+            <button id="add-activity-btn">Agregar Actividad</button>
+            <ul id="activity-list"></ul>
+        </section>
+
+        <section id="grades-section">
+            <h2>Calificaciones</h2>
+            <button id="add-grade-btn">Registrar Calificación</button>
+            <ul id="grades-list"></ul>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 EduProfe</p>
+    </footer>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(reg => console.log('Service Worker registrado con éxito', reg))
+                .catch(err => console.error('Error al registrar el Service Worker', err));
+        }
+
+        // Importar planes de área
+        document.getElementById('import-btn').addEventListener('click', () => {
+            const fileInput = document.getElementById('json-file');
+            const file = fileInput.files[0];
+
+            if (file) {
+                const reader = new FileReader();
+
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        storeInIndexedDB('plans', data);
+                        displayPlan(data);
+                    } catch (error) {
+                        alert('Error al procesar el archivo JSON. Asegúrate de que tiene el formato correcto.');
+                    }
+                };
+
+                reader.readAsText(file);
+            } else {
+                alert('Selecciona un archivo JSON antes de importar.');
+            }
+        });
+
+        // Gestión de IndexedDB
+        function storeInIndexedDB(storeName, data) {
+            const request = indexedDB.open('EduProfeDB', 1);
+
+            request.onupgradeneeded = function (event) {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains(storeName)) {
+                    db.createObjectStore(storeName, { keyPath: storeName === 'plans' ? 'asignatura' : 'id', autoIncrement: true });
+                }
+            };
+
+            request.onsuccess = function (event) {
+                const db = event.target.result;
+                const transaction = db.transaction(storeName, 'readwrite');
+                const store = transaction.objectStore(storeName);
+                store.put(data);
+
+                transaction.oncomplete = () => console.log(`Datos almacenados exitosamente en ${storeName} de IndexedDB.`);
+                transaction.onerror = () => console.error(`Error al almacenar datos en ${storeName} de IndexedDB.`);
+            };
+
+            request.onerror = function () {
+                console.error('Error al abrir IndexedDB.');
+            };
+        }
+
+        // Mostrar planes de área
+        function displayPlan(data) {
+            const planContainer = document.getElementById('plan-container');
+            planContainer.innerHTML = '';
+
+            const title = document.createElement('h3');
+            title.textContent = `${data.asignatura} - Grado ${data.grado}`;
+            planContainer.appendChild(title);
+
+            data.periodos.forEach(periodo => {
+                const periodoDiv = document.createElement('div');
+                periodoDiv.className = 'periodo';
+
+                const periodoTitle = document.createElement('h4');
+                periodoTitle.textContent = `Periodo ${periodo.numero}`;
+                periodoDiv.appendChild(periodoTitle);
+
+                const objetivosList = document.createElement('ul');
+                periodo.objetivos.forEach(obj => {
+                    const li = document.createElement('li');
+                    li.textContent = obj;
+                    objetivosList.appendChild(li);
+                });
+                periodoDiv.appendChild(objetivosList);
+
+                periodo.temas.forEach(tema => {
+                    const temaDiv = document.createElement('div');
+                    temaDiv.className = 'tema';
+
+                    const temaTitle = document.createElement('h5');
+                    temaTitle.textContent = tema.nombre;
+                    temaDiv.appendChild(temaTitle);
+
+                    const subtemasList = document.createElement('ul');
+                    tema.subtemas.forEach(subtema => {
+                        const li = document.createElement('li');
+                        li.textContent = subtema;
+                        subtemasList.appendChild(li);
+                    });
+                    temaDiv.appendChild(subtemasList);
+
+                    periodoDiv.appendChild(temaDiv);
+                });
+
+                planContainer.appendChild(periodoDiv);
+            });
+
+            document.getElementById('plan-display').style.display = 'block';
+        }
+
+        // Gestión de estudiantes
+        document.getElementById('add-student-btn').addEventListener('click', () => {
+            const name = prompt('Nombre del estudiante:');
+            if (name) {
+                const student = { id: Date.now(), name };
+                storeInIndexedDB('students', student);
+                displayStudent(student);
+            }
+        });
+
+        function displayStudent(student) {
+            const studentList = document.getElementById('student-list');
+            const li = document.createElement('li');
+            li.textContent = student.name;
+            studentList.appendChild(li);
+        }
+
+        // Gestión de actividades
+        document.getElementById('add-activity-btn').addEventListener('click', () => {
+            const description = prompt('Descripción de la actividad:');
+            if (description) {
+                const activity = { id: Date.now(), description };
+                storeInIndexedDB('activities', activity);
+                displayActivity(activity);
+            }
+        });
+
+        function displayActivity(activity) {
+            const activityList = document.getElementById('activity-list');
+            const li = document.createElement('li');
+            li.textContent = activity.description;
+            activityList.appendChild(li);
+        }
+
+        // Gestión de calificaciones
+        document.getElementById('add-grade-btn').addEventListener('click', () => {
+            const studentName = prompt('Nombre del estudiante:');
+            const grade = prompt('Calificación:');
+            if (studentName && grade) {
+                const gradeEntry = { id: Date.now(), studentName, grade };
+                storeInIndexedDB('grades', gradeEntry);
+                displayGrade(gradeEntry);
+            }
+        });
+
+        function displayGrade(gradeEntry) {
+            const gradesList = document.getElementById('grades-list');
+            const li = document.createElement('li');
+            li.textContent = `${gradeEntry.studentName}: ${gradeEntry.grade}`;
+            gradesList.appendChild(li);
+        }
+    </script>
+</body>
+</html>
