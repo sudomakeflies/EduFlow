@@ -11,6 +11,11 @@ const menuItems = document.querySelectorAll('.menu-item');
 
 // Update content based on section
 export function updateContent(section) {
+    // Update section title
+    if (sectionTitle) {
+        sectionTitle.textContent = section.charAt(0).toUpperCase() + section.slice(1) || 'Bienvenido';
+    }
+
     switch(section) {
         case 'planeaciones':
             updatePlaneacionesContent();
@@ -20,8 +25,12 @@ export function updateContent(section) {
             initializeImport();
             break;
         case 'asistencia':
+            // Primero renderizar el contenido
             content.innerHTML = renderAsistenciaSection();
-            initializeAsistencia();
+            // Luego inicializar los eventos y cargar datos
+            requestAnimationFrame(() => {
+                initializeAsistencia();
+            });
             break;
         default:
             content.innerHTML = `
@@ -48,10 +57,6 @@ export function initializeSidebar() {
             menuItems.forEach(i => i.classList.remove('active'));
             item.classList.add('active');
             const section = item.getAttribute('href').replace('#', '');
-            const sectionName = item.textContent.trim();
-            if (sectionTitle) {
-                sectionTitle.textContent = sectionName;
-            }
             updateContent(section);
             if (window.innerWidth < 1024) {
                 sidebar.classList.add('hidden');
@@ -65,9 +70,6 @@ export function initializeSidebar() {
             sidebar.classList.remove('hidden');
         }
     });
-
-    // Initialize default view
-    updateContent('');
 }
 
 // Export DOM elements for use in other modules
