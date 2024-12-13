@@ -2,6 +2,7 @@ import { initializeSidebar, elements } from './js/ui.js';
 import planeacionManager, { updatePlaneacionesContent } from './js/planeacion.js';
 import { initializeImport, renderImportSection } from './js/import.js';
 import { registerServiceWorker } from './js/sw-register.js';
+import { initializeAsistencia, renderAsistenciaSection } from './js/asistencia.js';
 
 // Initialize UI components
 initializeSidebar();
@@ -24,6 +25,10 @@ function updateContent(section) {
         case 'importar':
             elements.content.innerHTML = renderImportSection();
             initializeImport();
+            break;
+        case 'asistencia':
+            elements.content.innerHTML = renderAsistenciaSection();
+            initializeAsistencia();
             break;
         default:
             elements.content.innerHTML = `

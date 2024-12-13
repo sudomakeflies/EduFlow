@@ -1,6 +1,12 @@
-import { elements } from './ui.js';
-
 let importedStudents = [];
+
+// Función para obtener los estudiantes importados
+export function getImportedStudents() {
+    return importedStudents;
+}
+
+// Evento personalizado para notificar cuando se importan estudiantes
+export const STUDENTS_IMPORTED_EVENT = 'studentsImported';
 
 export function initializeImport() {
     const fileUpload = document.getElementById('file-upload');
@@ -19,16 +25,22 @@ export function initializeImport() {
                         if (results.data && results.data.length > 0) {
                             if (studentTable) {
                                 studentTable.innerHTML = '';
-                                importedStudents = results.data;
+                                importedStudents = results.data.filter(student => 
+                                    student['Nombre Completo'] && (student['Curso'] || student['Grado'])
+                                );
+                                
                                 importedStudents.forEach(student => {
-                                    if (student['Nombre Completo'] && (student['Curso'] || student['Grado'])) {
-                                        const row = studentTable.insertRow();
-                                        const nameCell = row.insertCell();
-                                        const courseCell = row.insertCell();
-                                        nameCell.textContent = student['Nombre Completo'];
-                                        courseCell.textContent = student['Curso'] || student['Grado'];
-                                    }
+                                    const row = studentTable.insertRow();
+                                    const nameCell = row.insertCell();
+                                    const courseCell = row.insertCell();
+                                    nameCell.textContent = student['Nombre Completo'];
+                                    courseCell.textContent = student['Curso'] || student['Grado'];
                                 });
+                                
+                                // Disparar evento cuando se importan estudiantes
+                                window.dispatchEvent(new CustomEvent(STUDENTS_IMPORTED_EVENT, {
+                                    detail: { students: importedStudents }
+                                }));
                             }
                             importMessage.textContent = 'Archivo cargado correctamente.';
                             importMessage.className = 'mt-2 text-sm text-green-500';
@@ -55,6 +67,11 @@ export function initializeImport() {
                 console.log('Imported students:', importedStudents);
                 importMessage.textContent = 'Datos guardados temporalmente. Puedes verlos en la consola del navegador.';
                 importMessage.className = 'mt-2 text-sm text-green-500';
+                
+                // Disparar evento cuando se guardan los estudiantes
+                window.dispatchEvent(new CustomEvent(STUDENTS_IMPORTED_EVENT, {
+                    detail: { students: importedStudents }
+                }));
             } else {
                 importMessage.textContent = 'No hay datos para guardar.';
                 importMessage.className = 'mt-2 text-sm text-red-500';
@@ -64,7 +81,15 @@ export function initializeImport() {
 
     if (cancelButton) {
         cancelButton.addEventListener('click', () => {
-            updateContent('');
+            const content = document.getElementById('content');
+            if (content) {
+                content.innerHTML = `
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">¡Bienvenido a EduFlow!</h2>
+                    <p class="text-gray-600">
+                        Selecciona una opción del menú para comenzar a gestionar tu institución educativa.
+                    </p>
+                `;
+            }
         });
     }
 }

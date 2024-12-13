@@ -1,5 +1,6 @@
 import planeacionManager, { updatePlaneacionesContent } from './planeacion.js';
 import { initializeImport, renderImportSection } from './import.js';
+import { initializeAsistencia, renderAsistenciaSection } from './asistencia.js';
 
 // DOM Elements
 const sidebarToggle = document.getElementById('sidebar-toggle');
@@ -17,6 +18,10 @@ export function updateContent(section) {
         case 'importar':
             content.innerHTML = renderImportSection();
             initializeImport();
+            break;
+        case 'asistencia':
+            content.innerHTML = renderAsistenciaSection();
+            initializeAsistencia();
             break;
         default:
             content.innerHTML = `
