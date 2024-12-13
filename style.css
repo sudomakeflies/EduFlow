@@ -1,0 +1,42 @@
+/* Custom styles to complement Tailwind */
+@media (max-width: 1024px) {
+    #sidebar.hidden {
+        transform: translateX(-100%);
+    }
+}
+
+.menu-item.active {
+    background-color: rgba(55, 65, 81, 1);
+}
+
+/* Smooth transitions */
+.transition-all {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+    .menu-item {
+        padding: 0.75rem 1rem;
+    }
+}
