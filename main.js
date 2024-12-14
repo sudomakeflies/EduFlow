@@ -1,47 +1,41 @@
-import { initializeSidebar, elements } from './js/ui.js';
-import planeacionManager, { updatePlaneacionesContent } from './js/planeacion.js';
-import { initializeImport, renderImportSection } from './js/import.js';
+import { initializeSidebar, updateContent } from './js/ui.js';
 import { registerServiceWorker } from './js/sw-register.js';
-import { initializeAsistencia, renderAsistenciaSection } from './js/asistencia.js';
+
+console.log('Main: Starting application initialization');
 
 // Initialize UI components
 initializeSidebar();
+console.log('Main: Sidebar initialized');
 
 // Register service worker
 registerServiceWorker();
+console.log('Main: Service worker registered');
 
-// Update content based on section
-function updateContent(section) {
-    // Update section title
-    const sectionTitle = document.getElementById('section-title');
-    if (sectionTitle) {
-        sectionTitle.textContent = section.charAt(0).toUpperCase() + section.slice(1) || 'Bienvenido';
+// Create a global app object and expose updateContent
+window.app = {
+    updateContent: function(section) {
+        console.log('Main: Received request to update content for section:', section);
+        updateContent(section);
+        console.log('Main: Content update completed for section:', section);
     }
+};
+console.log('Main: Global app object created with updateContent function');
 
-    switch(section) {
-        case 'planeaciones':
-            updatePlaneacionesContent();
-            break;
-        case 'importar':
-            elements.content.innerHTML = renderImportSection();
-            initializeImport();
-            break;
-        case 'asistencia':
-            elements.content.innerHTML = renderAsistenciaSection();
-            initializeAsistencia();
-            break;
-        default:
-            elements.content.innerHTML = `
-                <h2 class="text-2xl font-semibold text-gray-800 mb-4">¡Bienvenido a EduFlow!</h2>
-                <p class="text-gray-600">
-                    Selecciona una opción del menú para comenzar a gestionar tu institución educativa.
-                </p>
-            `;
-    }
+// Handle initial route from URL hash
+const initialHash = window.location.hash.slice(1);
+if (initialHash) {
+    console.log('Main: Found initial hash in URL:', initialHash);
+    window.app.updateContent(initialHash);
+} else {
+    console.log('Main: No initial hash, loading default view');
+    window.app.updateContent('');
 }
 
-// Make updateContent available globally for menu click handlers
-window.updateContent = updateContent;
+// Listen for hash changes
+window.addEventListener('hashchange', () => {
+    const newHash = window.location.hash.slice(1);
+    console.log('Main: Hash changed to:', newHash);
+    window.app.updateContent(newHash);
+});
 
-// Initialize default view
-updateContent('');
+console.log('Main: Application initialization completed');
