@@ -1,18 +1,22 @@
+import db from './db.js';
+
 console.log('PlanesDeArea: Module loaded');
 
-// Sample data structure for planes de area
 let planesDeArea = [];
 
-// Try to load saved data
-try {
-    const savedData = localStorage.getItem('planesDeArea');
-    if (savedData) {
-        planesDeArea = JSON.parse(savedData);
+// Load initial data from IndexedDB
+async function loadInitialData() {
+    try {
+        planesDeArea = await db.getAll('planesDeArea');
         console.log('PlanesDeArea: Initial data loaded:', planesDeArea);
+        updatePlanesDeAreaContent();
+    } catch (e) {
+        console.error('PlanesDeArea: Error loading initial data:', e);
     }
-} catch (e) {
-    console.error('PlanesDeArea: Error loading initial data:', e);
 }
+
+// Load data when module is imported
+loadInitialData();
 
 // Render main content
 function renderPlanesDeArea() {
@@ -21,9 +25,17 @@ function renderPlanesDeArea() {
         <div class="space-y-4">
             <div class="flex justify-between items-center">
                 <h2 class="text-2xl font-bold text-gray-800">Planes de Área</h2>
-                <button id="btn-crear-plan" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                    Crear Plan
-                </button>
+                <div class="space-x-2">
+                    <button id="btn-exportar" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                        Exportar
+                    </button>
+                    <button id="btn-importar" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">
+                        Importar
+                    </button>
+                    <button id="btn-crear-plan" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        Crear Plan
+                    </button>
+                </div>
             </div>
             
             <div class="overflow-x-auto">
@@ -70,25 +82,85 @@ function initializeEventListeners() {
         initializeFormEventListeners();
     });
 
+    // Export button
+    content.querySelector('#btn-exportar')?.addEventListener('click', async () => {
+        try {
+            const data = await db.getAll('planesDeArea');
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'planes-de-area.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error('Error exporting data:', e);
+            alert('Error al exportar los datos');
+        }
+    });
+
+    // Import button
+    content.querySelector('#btn-importar')?.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = async (e) => {
+            try {
+                const file = e.target.files[0];
+                const text = await file.text();
+                const data = JSON.parse(text);
+                
+                if (!Array.isArray(data)) {
+                    throw new Error('Invalid data format');
+                }
+
+                await db.clear('planesDeArea');
+                for (const plan of data) {
+                    await db.add('planesDeArea', plan);
+                }
+                
+                planesDeArea = data;
+                updatePlanesDeAreaContent();
+            } catch (e) {
+                console.error('Error importing data:', e);
+                alert('Error al importar los datos');
+            }
+        };
+        input.click();
+    });
+
     // Edit buttons
     content.querySelectorAll('.edit-plan').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             const planId = parseInt(btn.dataset.id);
-            const plan = planesDeArea.find(p => p.id === planId);
-            if (plan) {
-                content.innerHTML = renderPlanForm(plan);
-                initializeFormEventListeners(plan);
+            try {
+                const plan = await db.get('planesDeArea', planId);
+                if (plan) {
+                    content.innerHTML = renderPlanForm(plan);
+                    initializeFormEventListeners(plan);
+                }
+            } catch (e) {
+                console.error('Error loading plan:', e);
+                alert('Error al cargar el plan');
             }
         });
     });
 
     // Delete buttons
     content.querySelectorAll('.delete-plan').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             const planId = parseInt(btn.dataset.id);
             if (confirm('¿Está seguro de que desea eliminar este plan de área?')) {
-                planesDeArea = planesDeArea.filter(p => p.id !== planId);
-                updatePlanesDeAreaContent();
+                try {
+                    await db.delete('planesDeArea', planId);
+                    planesDeArea = planesDeArea.filter(p => p.id !== planId);
+                    updatePlanesDeAreaContent();
+                } catch (e) {
+                    console.error('Error deleting plan:', e);
+                    alert('Error al eliminar el plan');
+                }
             }
         });
     });
@@ -189,6 +261,20 @@ function renderPlanForm(plan = null) {
                                             </tr>
                                         </thead>
                                         <tbody class="matriz-body" data-periodo="${i + 1}">
+                                            ${plan?.contenido?.[`periodo${i + 1}`]?.matriz?.map(row => `
+                                                <tr>
+                                                    <td class="border p-2"><input type="text" class="w-full border-gray-300 rounded-md" value="${row.competenciaContenido}"></td>
+                                                    <td class="border p-2"><input type="text" class="w-full border-gray-300 rounded-md" value="${row.estandar}"></td>
+                                                    <td class="border p-2"><input type="text" class="w-full border-gray-300 rounded-md" value="${row.competenciaProceso}"></td>
+                                                    <td class="border p-2"><input type="text" class="w-full border-gray-300 rounded-md" value="${row.dbaAprendizajes}"></td>
+                                                    <td class="border p-2"><input type="text" class="w-full border-gray-300 rounded-md" value="${row.estrategias}"></td>
+                                                    <td class="border p-2"><input type="text" class="w-full border-gray-300 rounded-md" value="${row.criteriosEvaluacion}"></td>
+                                                    <td class="border p-2"><input type="text" class="w-full border-gray-300 rounded-md" value="${row.evidenciasAprendizaje}"></td>
+                                                    <td class="border p-2">
+                                                        <button type="button" class="text-red-600 hover:text-red-800 delete-row">Eliminar</button>
+                                                    </td>
+                                                </tr>
+                                            `).join('') || ''}
                                             <tr>
                                                 <td colspan="8" class="px-4 py-2 border text-center">
                                                     <button type="button" class="add-row-btn text-blue-600 hover:text-blue-800" data-periodo="${i + 1}">
@@ -262,7 +348,7 @@ function initializeFormEventListeners(plan = null) {
     });
 
     // Form submission
-    form?.addEventListener('submit', (e) => {
+    form?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(form);
         
@@ -303,28 +389,33 @@ function initializeFormEventListeners(plan = null) {
             });
         }
 
-        if (plan) {
-            // Update existing plan
-            planesDeArea = planesDeArea.map(p => p.id === plan.id ? planData : p);
-        } else {
-            // Add new plan
-            planesDeArea.push(planData);
-        }
-
-        // Save to localStorage
         try {
-            localStorage.setItem('planesDeArea', JSON.stringify(planesDeArea));
-            console.log('PlanesDeArea: Data saved:', planesDeArea);
+            if (plan) {
+                // Update existing plan
+                await db.put('planesDeArea', planData);
+                planesDeArea = planesDeArea.map(p => p.id === plan.id ? planData : p);
+            } else {
+                // Add new plan
+                await db.add('planesDeArea', planData);
+                planesDeArea.push(planData);
+            }
+            updatePlanesDeAreaContent();
         } catch (e) {
-            console.error('PlanesDeArea: Error saving data:', e);
+            console.error('Error saving plan:', e);
+            alert('Error al guardar el plan');
         }
-
-        updatePlanesDeAreaContent();
     });
 
     // Cancel and back buttons
     content.querySelector('#btn-cancelar')?.addEventListener('click', updatePlanesDeAreaContent);
     content.querySelector('#btn-volver')?.addEventListener('click', updatePlanesDeAreaContent);
+
+    // Add delete row handlers for existing rows
+    content.querySelectorAll('.delete-row').forEach(btn => {
+        btn.addEventListener('click', () => {
+            btn.closest('tr').remove();
+        });
+    });
 }
 
 // Update main content

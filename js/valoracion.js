@@ -1,7 +1,5 @@
 import { getImportedStudents, STUDENTS_IMPORTED_EVENT } from './import.js';
-
-// Estructura de datos para almacenar las planillas de valoración
-let planillasValoracion = {};
+import db from './db.js';
 
 // Lista de asignaturas disponibles
 const ASIGNATURAS = [
@@ -16,17 +14,6 @@ const ASIGNATURAS = [
     'Ética y Valores',
     'Religión'
 ];
-
-// Cargar datos guardados inmediatamente
-try {
-    const savedData = localStorage.getItem('planillasValoracion');
-    if (savedData) {
-        planillasValoracion = JSON.parse(savedData);
-        console.log('Datos de valoración cargados:', planillasValoracion);
-    }
-} catch (e) {
-    console.error('Error al cargar datos de valoración:', e);
-}
 
 // Función para obtener los cursos únicos de los estudiantes importados
 function getCursosUnicos() {
@@ -65,32 +52,25 @@ function calcularPromedio(notas) {
 }
 
 // Función para guardar una planilla
-function guardarPlanilla(curso, asignatura, criterios, estudiantes) {
-    if (!planillasValoracion[curso]) {
-        planillasValoracion[curso] = {};
-    }
-    if (!planillasValoracion[curso][asignatura]) {
-        planillasValoracion[curso][asignatura] = {
-            criterios: [],
+async function guardarPlanilla(curso, asignatura, criterios, estudiantes) {
+    try {
+        const planilla = {
+            curso,
+            asignatura,
+            criterios,
             estudiantes: {}
         };
-    }
 
-    const planilla = planillasValoracion[curso][asignatura];
-    planilla.criterios = criterios;
+        // Actualizar estudiantes y calcular promedios
+        Object.keys(estudiantes).forEach(estudiante => {
+            planilla.estudiantes[estudiante] = {
+                ...estudiantes[estudiante],
+                promedio: calcularPromedio(estudiantes[estudiante])
+            };
+        });
 
-    // Actualizar estudiantes y calcular promedios
-    Object.keys(estudiantes).forEach(estudiante => {
-        planilla.estudiantes[estudiante] = {
-            ...estudiantes[estudiante],
-            promedio: calcularPromedio(estudiantes[estudiante])
-        };
-    });
-
-    // Guardar en localStorage
-    try {
-        localStorage.setItem('planillasValoracion', JSON.stringify(planillasValoracion));
-        console.log('Planilla guardada:', planillasValoracion);
+        await db.put('planillasValoracion', planilla);
+        console.log('Planilla guardada:', planilla);
         return true;
     } catch (e) {
         console.error('Error al guardar planilla:', e);
@@ -99,40 +79,32 @@ function guardarPlanilla(curso, asignatura, criterios, estudiantes) {
 }
 
 // Función para eliminar una planilla
-function eliminarPlanilla(curso, asignatura) {
-    if (planillasValoracion[curso]?.[asignatura]) {
-        delete planillasValoracion[curso][asignatura];
-        if (Object.keys(planillasValoracion[curso]).length === 0) {
-            delete planillasValoracion[curso];
-        }
-        localStorage.setItem('planillasValoracion', JSON.stringify(planillasValoracion));
+async function eliminarPlanilla(curso, asignatura) {
+    try {
+        await db.delete('planillasValoracion', [curso, asignatura]);
         return true;
+    } catch (e) {
+        console.error('Error al eliminar planilla:', e);
+        return false;
     }
-    return false;
 }
 
 // Función para obtener todas las planillas
-function getPlanillas() {
-    console.log('Obteniendo planillas:', planillasValoracion);
-    const planillas = [];
-    for (const curso in planillasValoracion) {
-        for (const asignatura in planillasValoracion[curso]) {
-            planillas.push({
-                curso,
-                asignatura,
-                criterios: planillasValoracion[curso][asignatura].criterios,
-                estudiantes: planillasValoracion[curso][asignatura].estudiantes
-            });
-        }
+async function getPlanillas() {
+    try {
+        const planillas = await db.getAll('planillasValoracion');
+        console.log('Planillas obtenidas:', planillas);
+        return planillas;
+    } catch (e) {
+        console.error('Error al obtener planillas:', e);
+        return [];
     }
-    console.log('Planillas procesadas:', planillas);
-    return planillas;
 }
 
 // Función para renderizar la lista de planillas
-function renderizarListaPlanillas() {
+async function renderizarListaPlanillas() {
     console.log('Renderizando lista de planillas');
-    const planillas = getPlanillas();
+    const planillas = await getPlanillas();
     
     if (planillas.length === 0) {
         console.log('No hay planillas para mostrar');
@@ -184,7 +156,7 @@ function renderizarListaPlanillas() {
 }
 
 // Función para renderizar la sección completa de valoración
-export function renderValoracionSection() {
+export async function renderValoracionSection() {
     console.log('Renderizando sección de valoración');
     const cursos = getCursosUnicos();
     console.log('Cursos disponibles:', cursos);
@@ -199,7 +171,7 @@ export function renderValoracionSection() {
             </div>
 
             <div id="lista-planillas-valoracion" class="mb-6">
-                ${renderizarListaPlanillas()}
+                ${await renderizarListaPlanillas()}
             </div>
 
             <div id="form-planilla-valoracion" class="hidden space-y-6 bg-gray-50 p-6 rounded-lg">
@@ -271,20 +243,20 @@ export function renderValoracionSection() {
 }
 
 // Función para inicializar los eventos de la sección de valoración
-export function initializeValoracion() {
+export async function initializeValoracion() {
     console.log('Inicializando valoración...');
     
     // Actualizar la lista de planillas inmediatamente
     const listaPlanillas = document.getElementById('lista-planillas-valoracion');
     if (listaPlanillas) {
         console.log('Actualizando lista de planillas');
-        listaPlanillas.innerHTML = renderizarListaPlanillas();
+        listaPlanillas.innerHTML = await renderizarListaPlanillas();
     } else {
         console.error('No se encontró el elemento lista-planillas-valoracion');
     }
     
     // Exponer funciones necesarias para los eventos onclick en la tabla
-    window.editarPlanillaValoracion = (curso, asignatura) => {
+    window.editarPlanillaValoracion = async (curso, asignatura) => {
         console.log('Editando planilla:', curso, asignatura);
         const formPlanilla = document.getElementById('form-planilla-valoracion');
         const listaPlanillas = document.getElementById('lista-planillas-valoracion');
@@ -299,7 +271,8 @@ export function initializeValoracion() {
             asignaturaSelect.value = asignatura;
             
             // Cargar criterios existentes
-            const criterios = planillasValoracion[curso][asignatura].criterios;
+            const planilla = await db.get('planillasValoracion', [curso, asignatura]);
+            const criterios = planilla.criterios;
             const criteriosContainer = document.getElementById('criterios-container');
             criteriosContainer.innerHTML = criterios.map(criterio => `
                 <div class="flex items-center space-x-2">
@@ -329,13 +302,13 @@ export function initializeValoracion() {
         }
     };
 
-    window.eliminarPlanillaValoracionConfirm = (curso, asignatura) => {
+    window.eliminarPlanillaValoracionConfirm = async (curso, asignatura) => {
         console.log('Confirmando eliminación de planilla:', curso, asignatura);
         if (confirm('¿Está seguro de que desea eliminar esta planilla?')) {
-            if (eliminarPlanilla(curso, asignatura)) {
+            if (await eliminarPlanilla(curso, asignatura)) {
                 const listaPlanillas = document.getElementById('lista-planillas-valoracion');
                 if (listaPlanillas) {
-                    listaPlanillas.innerHTML = renderizarListaPlanillas();
+                    listaPlanillas.innerHTML = await renderizarListaPlanillas();
                 }
             }
         }
@@ -460,22 +433,24 @@ export function initializeValoracion() {
 
             if (!notasValidas) return;
 
-            if (guardarPlanilla(curso, asignatura, criteriosInputs, estudiantes)) {
-                const formPlanilla = document.getElementById('form-planilla-valoracion');
-                const listaPlanillas = document.getElementById('lista-planillas-valoracion');
-                
-                if (formPlanilla && listaPlanillas) {
-                    formPlanilla.classList.add('hidden');
-                    listaPlanillas.classList.remove('hidden');
-                    listaPlanillas.innerHTML = renderizarListaPlanillas();
+            guardarPlanilla(curso, asignatura, criteriosInputs, estudiantes).then(async success => {
+                if (success) {
+                    const formPlanilla = document.getElementById('form-planilla-valoracion');
+                    const listaPlanillas = document.getElementById('lista-planillas-valoracion');
+                    
+                    if (formPlanilla && listaPlanillas) {
+                        formPlanilla.classList.add('hidden');
+                        listaPlanillas.classList.remove('hidden');
+                        listaPlanillas.innerHTML = await renderizarListaPlanillas();
+                    }
+                } else {
+                    alert('Error al guardar la planilla');
                 }
-            } else {
-                alert('Error al guardar la planilla');
-            }
+            });
         }
     });
 
-    function actualizarTablaValoracion() {
+    async function actualizarTablaValoracion() {
         console.log('Actualizando tabla de valoración');
         const curso = document.getElementById('curso-select-valoracion')?.value;
         const asignatura = document.getElementById('asignatura-select-valoracion')?.value;
@@ -488,7 +463,12 @@ export function initializeValoracion() {
                     .map(input => input.value.trim())
                     .filter(Boolean);
                 
-                const planillaExistente = planillasValoracion[curso]?.[asignatura];
+                let planillaExistente;
+                try {
+                    planillaExistente = await db.get('planillasValoracion', [curso, asignatura]);
+                } catch (e) {
+                    console.log('No existe planilla previa');
+                }
                 
                 planillaContainer.innerHTML = `
                     <div class="overflow-x-auto">
@@ -560,4 +540,4 @@ export function initializeValoracion() {
 }
 
 // Exportar la estructura de datos para pruebas o uso externo
-export const getPlanillasValoracion = () => planillasValoracion;
+export const getPlanillasValoracion = async () => await getPlanillas();

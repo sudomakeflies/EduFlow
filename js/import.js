@@ -1,21 +1,31 @@
+import db from './db.js';
+
 let importedStudents = [];
 
+// Evento personalizado para notificar cuando se importan estudiantes
+export const STUDENTS_IMPORTED_EVENT = 'studentsImported';
+
 // Cargar estudiantes guardados al inicio
-try {
-    const savedStudents = localStorage.getItem('importedStudents');
-    if (savedStudents) {
-        importedStudents = JSON.parse(savedStudents);
-        console.log('Import: Loaded saved students:', importedStudents);
-        
-        // Disparar evento para notificar que hay estudiantes cargados
-        if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent(STUDENTS_IMPORTED_EVENT, {
-                detail: { students: importedStudents }
+async function loadSavedStudents() {
+    try {
+        const students = await db.getAll('estudiantes');
+        if (students && students.length > 0) {
+            importedStudents = students.map(student => ({
+                'Nombre Completo': student.nombreCompleto,
+                'Curso': student.curso
             }));
+            console.log('Import: Loaded saved students:', importedStudents);
+            
+            // Disparar evento para notificar que hay estudiantes cargados
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent(STUDENTS_IMPORTED_EVENT, {
+                    detail: { students: importedStudents }
+                }));
+            }
         }
+    } catch (e) {
+        console.error('Import: Error loading saved students:', e);
     }
-} catch (e) {
-    console.error('Import: Error loading saved students:', e);
 }
 
 // Función para obtener los estudiantes importados
@@ -24,11 +34,10 @@ export function getImportedStudents() {
     return importedStudents;
 }
 
-// Evento personalizado para notificar cuando se importan estudiantes
-export const STUDENTS_IMPORTED_EVENT = 'studentsImported';
-
-export function initializeImport() {
+export async function initializeImport() {
     console.log('Import: Initializing import functionality');
+    await loadSavedStudents();
+
     const fileUpload = document.getElementById('file-upload');
     const studentTable = document.getElementById('student-table')?.getElementsByTagName('tbody')[0];
     const saveButton = document.getElementById('save-button');
@@ -55,7 +64,7 @@ export function initializeImport() {
             if (file) {
                 Papa.parse(file, {
                     header: true,
-                    complete: function(results) {
+                    complete: async function(results) {
                         if (results.data && results.data.length > 0) {
                             if (studentTable) {
                                 studentTable.innerHTML = '';
@@ -71,12 +80,18 @@ export function initializeImport() {
                                     courseCell.textContent = student['Curso'] || student['Grado'];
                                 });
                                 
-                                // Guardar en localStorage
+                                // Guardar en IndexedDB
                                 try {
-                                    localStorage.setItem('importedStudents', JSON.stringify(importedStudents));
-                                    console.log('Import: Students saved to localStorage');
+                                    await db.clear('estudiantes');
+                                    for (const student of importedStudents) {
+                                        await db.add('estudiantes', {
+                                            nombreCompleto: student['Nombre Completo'],
+                                            curso: student['Curso'] || student['Grado']
+                                        });
+                                    }
+                                    console.log('Import: Students saved to IndexedDB');
                                 } catch (e) {
-                                    console.error('Import: Error saving students to localStorage:', e);
+                                    console.error('Import: Error saving students to IndexedDB:', e);
                                 }
                                 
                                 // Disparar evento cuando se importan estudiantes
@@ -106,26 +121,33 @@ export function initializeImport() {
     }
 
     if (saveButton) {
-        saveButton.addEventListener('click', () => {
+        saveButton.addEventListener('click', async () => {
             if (importedStudents.length > 0) {
                 console.log('Import: Saving imported students');
                 
-                // Guardar en localStorage
+                // Guardar en IndexedDB
                 try {
-                    localStorage.setItem('importedStudents', JSON.stringify(importedStudents));
-                    console.log('Import: Students saved to localStorage');
+                    await db.clear('estudiantes');
+                    for (const student of importedStudents) {
+                        await db.add('estudiantes', {
+                            nombreCompleto: student['Nombre Completo'],
+                            curso: student['Curso'] || student['Grado']
+                        });
+                    }
+                    console.log('Import: Students saved to IndexedDB');
+                    importMessage.textContent = 'Datos guardados correctamente.';
+                    importMessage.className = 'mt-2 text-sm text-green-500';
+                    
+                    // Disparar evento cuando se guardan los estudiantes
+                    window.dispatchEvent(new CustomEvent(STUDENTS_IMPORTED_EVENT, {
+                        detail: { students: importedStudents }
+                    }));
+                    console.log('Import: Students saved event dispatched');
                 } catch (e) {
-                    console.error('Import: Error saving students to localStorage:', e);
+                    console.error('Import: Error saving students to IndexedDB:', e);
+                    importMessage.textContent = 'Error al guardar los datos.';
+                    importMessage.className = 'mt-2 text-sm text-red-500';
                 }
-                
-                importMessage.textContent = 'Datos guardados correctamente.';
-                importMessage.className = 'mt-2 text-sm text-green-500';
-                
-                // Disparar evento cuando se guardan los estudiantes
-                window.dispatchEvent(new CustomEvent(STUDENTS_IMPORTED_EVENT, {
-                    detail: { students: importedStudents }
-                }));
-                console.log('Import: Students saved event dispatched');
             } else {
                 importMessage.textContent = 'No hay datos para guardar.';
                 importMessage.className = 'mt-2 text-sm text-red-500';

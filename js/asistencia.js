@@ -1,7 +1,5 @@
 import { getImportedStudents, STUDENTS_IMPORTED_EVENT } from './import.js';
-
-// Estructura de datos para almacenar la asistencia
-let asistenciaData = {};
+import db from './db.js';
 
 // Lista de asignaturas disponibles
 const ASIGNATURAS = [
@@ -16,17 +14,6 @@ const ASIGNATURAS = [
     'Ética y Valores',
     'Religión'
 ];
-
-// Cargar datos guardados inmediatamente
-try {
-    const savedData = localStorage.getItem('asistenciaData');
-    if (savedData) {
-        asistenciaData = JSON.parse(savedData);
-        console.log('Datos iniciales cargados:', asistenciaData);
-    }
-} catch (e) {
-    console.error('Error al cargar datos iniciales:', e);
-}
 
 // Función para obtener los cursos únicos de los estudiantes importados
 function getCursosUnicos() {
@@ -57,80 +44,76 @@ function getHoraActual() {
 }
 
 // Función para obtener los ausentes de un curso, fecha y hora específicos
-function getAusentes(fecha, curso, hora) {
-    return asistenciaData[fecha]?.[curso]?.[hora]?.ausentes || [];
+async function getAusentes(fecha, curso, hora) {
+    try {
+        const planilla = await db.get('asistencia', `${fecha}-${curso}-${hora}`);
+        return planilla?.ausentes || [];
+    } catch (e) {
+        console.error('Error getting ausentes:', e);
+        return [];
+    }
 }
 
 // Función para obtener la asignatura de una planilla
-function getAsignatura(fecha, curso, hora) {
-    return asistenciaData[fecha]?.[curso]?.[hora]?.asignatura || '';
+async function getAsignatura(fecha, curso, hora) {
+    try {
+        const planilla = await db.get('asistencia', `${fecha}-${curso}-${hora}`);
+        return planilla?.asignatura || '';
+    } catch (e) {
+        console.error('Error getting asignatura:', e);
+        return '';
+    }
 }
 
 // Función para guardar la asistencia
-function guardarAsistencia(fecha, curso, hora, asignatura, ausentes) {
-    if (!asistenciaData[fecha]) {
-        asistenciaData[fecha] = {};
-    }
-    if (!asistenciaData[fecha][curso]) {
-        asistenciaData[fecha][curso] = {};
-    }
-    asistenciaData[fecha][curso][hora] = {
-        asignatura,
-        ausentes
-    };
-    
-    // Guardar en localStorage
+async function guardarAsistencia(fecha, curso, hora, asignatura, ausentes) {
     try {
-        localStorage.setItem('asistenciaData', JSON.stringify(asistenciaData));
-        console.log('Asistencia guardada:', asistenciaData);
+        const id = `${fecha}-${curso}-${hora}`;
+        await db.put('asistencia', {
+            id,
+            fecha,
+            curso,
+            hora,
+            asignatura,
+            ausentes
+        });
+        console.log('Asistencia guardada:', { fecha, curso, hora, asignatura, ausentes });
+        return true;
     } catch (e) {
-        console.error('Error al guardar asistencia:', e);
+        console.error('Error saving attendance:', e);
+        return false;
     }
 }
 
 // Función para eliminar una planilla
-function eliminarPlanilla(fecha, curso, hora) {
-    if (asistenciaData[fecha]?.[curso]?.[hora]) {
-        delete asistenciaData[fecha][curso][hora];
-        // Limpiar objetos vacíos
-        if (Object.keys(asistenciaData[fecha][curso]).length === 0) {
-            delete asistenciaData[fecha][curso];
-        }
-        if (Object.keys(asistenciaData[fecha]).length === 0) {
-            delete asistenciaData[fecha];
-        }
-        // Actualizar localStorage
-        localStorage.setItem('asistenciaData', JSON.stringify(asistenciaData));
+async function eliminarPlanilla(fecha, curso, hora) {
+    try {
+        const id = `${fecha}-${curso}-${hora}`;
+        await db.delete('asistencia', id);
         return true;
+    } catch (e) {
+        console.error('Error deleting attendance:', e);
+        return false;
     }
-    return false;
 }
 
 // Función para obtener todas las planillas
-function getPlanillas() {
-    const planillas = [];
-    for (const fecha in asistenciaData) {
-        for (const curso in asistenciaData[fecha]) {
-            for (const hora in asistenciaData[fecha][curso]) {
-                planillas.push({
-                    fecha,
-                    curso,
-                    hora,
-                    asignatura: asistenciaData[fecha][curso][hora].asignatura,
-                    ausentes: asistenciaData[fecha][curso][hora].ausentes
-                });
-            }
-        }
+async function getPlanillas() {
+    try {
+        const planillas = await db.getAll('asistencia');
+        return planillas.sort((a, b) => {
+            // Ordenar por fecha descendente y hora
+            return b.fecha.localeCompare(a.fecha) || a.hora.localeCompare(b.hora);
+        });
+    } catch (e) {
+        console.error('Error getting planillas:', e);
+        return [];
     }
-    return planillas.sort((a, b) => {
-        // Ordenar por fecha descendente y hora
-        return b.fecha.localeCompare(a.fecha) || a.hora.localeCompare(b.hora);
-    });
 }
 
 // Función para renderizar la lista de planillas
-function renderizarListaPlanillas() {
-    const planillas = getPlanillas();
+async function renderizarListaPlanillas() {
+    const planillas = await getPlanillas();
     console.log('Renderizando planillas:', planillas);
     
     if (planillas.length === 0) {
@@ -191,13 +174,24 @@ export function renderAsistenciaSection() {
         <section id="asistencia-section" class="space-y-6">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-semibold text-gray-800">Planillas de Asistencia</h2>
-                <button id="nueva-planilla" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                    Nueva Planilla
-                </button>
+                <div class="space-x-2">
+                    <button id="btn-exportar" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                        Exportar
+                    </button>
+                    <button id="btn-importar" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">
+                        Importar
+                    </button>
+                    <button id="nueva-planilla" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                        Nueva Planilla
+                    </button>
+                </div>
             </div>
 
             <div id="lista-planillas" class="mb-6">
-                ${renderizarListaPlanillas()}
+                <div class="text-center">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    <p class="mt-2 text-gray-600">Cargando planillas...</p>
+                </div>
             </div>
 
             <div id="form-planilla" class="hidden space-y-6 bg-gray-50 p-6 rounded-lg">
@@ -268,11 +262,13 @@ export function initializeAsistencia() {
     // Actualizar la lista de planillas inmediatamente
     const listaPlanillas = document.getElementById('lista-planillas');
     if (listaPlanillas) {
-        listaPlanillas.innerHTML = renderizarListaPlanillas();
+        renderizarListaPlanillas().then(html => {
+            listaPlanillas.innerHTML = html;
+        });
     }
     
     // Exponer funciones necesarias para los eventos onclick en la tabla
-    window.editarPlanilla = (fecha, curso, hora) => {
+    window.editarPlanilla = async (fecha, curso, hora) => {
         const formPlanilla = document.getElementById('form-planilla');
         const listaPlanillas = document.getElementById('lista-planillas');
         const cursoSelect = document.getElementById('curso-select');
@@ -288,14 +284,14 @@ export function initializeAsistencia() {
             
             // Establecer la asignatura
             if (asignaturaSelect) {
-                const asignatura = getAsignatura(fecha, curso, hora);
+                const asignatura = await getAsignatura(fecha, curso, hora);
                 asignaturaSelect.value = asignatura;
             }
             
             const planillaContainer = document.getElementById('planilla-container');
             if (planillaContainer) {
                 const estudiantes = getEstudiantesPorCurso(curso);
-                const ausentes = getAusentes(fecha, curso, hora);
+                const ausentes = await getAusentes(fecha, curso, hora);
                 
                 planillaContainer.innerHTML = `
                     <div class="overflow-x-auto">
@@ -335,19 +331,19 @@ export function initializeAsistencia() {
         }
     };
 
-    window.eliminarPlanillaConfirm = (fecha, curso, hora) => {
+    window.eliminarPlanillaConfirm = async (fecha, curso, hora) => {
         if (confirm('¿Está seguro de que desea eliminar esta planilla?')) {
-            if (eliminarPlanilla(fecha, curso, hora)) {
+            if (await eliminarPlanilla(fecha, curso, hora)) {
                 const listaPlanillas = document.getElementById('lista-planillas');
                 if (listaPlanillas) {
-                    listaPlanillas.innerHTML = renderizarListaPlanillas();
+                    listaPlanillas.innerHTML = await renderizarListaPlanillas();
                 }
             }
         }
     };
 
     // Event Listeners
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', async (e) => {
         if (e.target.id === 'nueva-planilla') {
             const formPlanilla = document.getElementById('form-planilla');
             const listaPlanillas = document.getElementById('lista-planillas');
@@ -377,6 +373,55 @@ export function initializeAsistencia() {
                     `;
                 }
             }
+        }
+
+        if (e.target.id === 'btn-exportar') {
+            try {
+                const data = await db.getAll('asistencia');
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'asistencia.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                console.error('Error exporting data:', e);
+                alert('Error al exportar los datos');
+            }
+        }
+
+        if (e.target.id === 'btn-importar') {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                try {
+                    const file = e.target.files[0];
+                    const text = await file.text();
+                    const data = JSON.parse(text);
+                    
+                    if (!Array.isArray(data)) {
+                        throw new Error('Invalid data format');
+                    }
+
+                    await db.clear('asistencia');
+                    for (const planilla of data) {
+                        await db.add('asistencia', planilla);
+                    }
+                    
+                    const listaPlanillas = document.getElementById('lista-planillas');
+                    if (listaPlanillas) {
+                        listaPlanillas.innerHTML = await renderizarListaPlanillas();
+                    }
+                } catch (e) {
+                    console.error('Error importing data:', e);
+                    alert('Error al importar los datos');
+                }
+            };
+            input.click();
         }
         
         if (e.target.id === 'cancelar-asistencia') {
@@ -408,15 +453,15 @@ export function initializeAsistencia() {
             // Usar la hora existente si está editando, o crear una nueva
             const hora = formPlanilla?.dataset.editandoHora || getHoraActual();
             
-            guardarAsistencia(fecha, curso, hora, asignatura, ausentes);
-            
-            // Volver a la lista
-            if (formPlanilla) {
-                formPlanilla.classList.add('hidden');
-                const listaPlanillas = document.getElementById('lista-planillas');
-                if (listaPlanillas) {
-                    listaPlanillas.classList.remove('hidden');
-                    listaPlanillas.innerHTML = renderizarListaPlanillas();
+            if (await guardarAsistencia(fecha, curso, hora, asignatura, ausentes)) {
+                // Volver a la lista
+                if (formPlanilla) {
+                    formPlanilla.classList.add('hidden');
+                    const listaPlanillas = document.getElementById('lista-planillas');
+                    if (listaPlanillas) {
+                        listaPlanillas.classList.remove('hidden');
+                        listaPlanillas.innerHTML = await renderizarListaPlanillas();
+                    }
                 }
             }
         }
@@ -479,6 +524,3 @@ export function initializeAsistencia() {
         actualizarPlanilla();
     });
 }
-
-// Exportar la estructura de datos para pruebas o uso externo
-export const getAsistenciaData = () => asistenciaData;

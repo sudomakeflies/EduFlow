@@ -1,24 +1,27 @@
+import db from './db.js';
+
 console.log('Encuadres: Module loaded');
 
-// Data structure for encuadres
 let encuadres = [];
 
-// Try to load saved data
-try {
-    const savedData = localStorage.getItem('encuadres');
-    if (savedData) {
-        encuadres = JSON.parse(savedData);
+// Load initial data from IndexedDB
+async function loadInitialData() {
+    try {
+        encuadres = await db.getAll('encuadres');
         console.log('Encuadres: Initial data loaded:', encuadres);
+        updateEncuadresContent();
+    } catch (e) {
+        console.error('Encuadres: Error loading initial data:', e);
     }
-} catch (e) {
-    console.error('Encuadres: Error loading initial data:', e);
 }
 
-// Load planes de area from localStorage
-function loadPlanesDeArea() {
+// Load data when module is imported
+loadInitialData();
+
+// Load planes de area from IndexedDB
+async function loadPlanesDeArea() {
     try {
-        const savedData = localStorage.getItem('planesDeArea');
-        return savedData ? JSON.parse(savedData) : [];
+        return await db.getAll('planesDeArea');
     } catch (e) {
         console.error('Encuadres: Error loading planes de area:', e);
         return [];
@@ -26,15 +29,25 @@ function loadPlanesDeArea() {
 }
 
 // Render main content
-function renderEncuadres() {
+async function renderEncuadres() {
     console.log('Encuadres: Rendering main content');
+    const planesDeArea = await loadPlanesDeArea();
+    
     return `
         <div class="space-y-4">
             <div class="flex justify-between items-center">
                 <h2 class="text-2xl font-bold text-gray-800">Encuadres</h2>
-                <button id="btn-crear-encuadre" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                    Crear Encuadre
-                </button>
+                <div class="space-x-2">
+                    <button id="btn-exportar" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                        Exportar
+                    </button>
+                    <button id="btn-importar" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">
+                        Importar
+                    </button>
+                    <button id="btn-crear-encuadre" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        Crear Encuadre
+                    </button>
+                </div>
             </div>
             
             <div class="overflow-x-auto">
@@ -49,7 +62,7 @@ function renderEncuadres() {
                     </thead>
                     <tbody>
                         ${encuadres.map(encuadre => {
-                            const planDeArea = loadPlanesDeArea().find(p => p.id === encuadre.planDeAreaId);
+                            const planDeArea = planesDeArea.find(p => p.id === encuadre.planDeAreaId);
                             return `
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-6 py-4 border-b">${planDeArea ? `${planDeArea.asignatura} - ${planDeArea.grado}` : 'Plan no encontrado'}</td>
@@ -74,10 +87,10 @@ function renderEncuadres() {
 }
 
 // Render form for create/edit
-function renderEncuadreForm(encuadre = null) {
+async function renderEncuadreForm(encuadre = null) {
     console.log('Encuadres: Rendering form', encuadre ? 'for edit' : 'for create');
     const isEdit = !!encuadre;
-    const planesDeArea = loadPlanesDeArea();
+    const planesDeArea = await loadPlanesDeArea();
     
     return `
         <div class="space-y-6">
@@ -188,31 +201,90 @@ function initializeEventListeners() {
     const content = document.getElementById('content');
 
     // Create button
-    content.querySelector('#btn-crear-encuadre')?.addEventListener('click', () => {
-        content.innerHTML = renderEncuadreForm();
+    content.querySelector('#btn-crear-encuadre')?.addEventListener('click', async () => {
+        content.innerHTML = await renderEncuadreForm();
         initializeFormEventListeners();
+    });
+
+    // Export button
+    content.querySelector('#btn-exportar')?.addEventListener('click', async () => {
+        try {
+            const data = await db.getAll('encuadres');
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'encuadres.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error('Error exporting data:', e);
+            alert('Error al exportar los datos');
+        }
+    });
+
+    // Import button
+    content.querySelector('#btn-importar')?.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = async (e) => {
+            try {
+                const file = e.target.files[0];
+                const text = await file.text();
+                const data = JSON.parse(text);
+                
+                if (!Array.isArray(data)) {
+                    throw new Error('Invalid data format');
+                }
+
+                await db.clear('encuadres');
+                for (const encuadre of data) {
+                    await db.add('encuadres', encuadre);
+                }
+                
+                encuadres = data;
+                updateEncuadresContent();
+            } catch (e) {
+                console.error('Error importing data:', e);
+                alert('Error al importar los datos');
+            }
+        };
+        input.click();
     });
 
     // Edit buttons
     content.querySelectorAll('.edit-encuadre').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             const encuadreId = parseInt(btn.dataset.id);
-            const encuadre = encuadres.find(e => e.id === encuadreId);
-            if (encuadre) {
-                content.innerHTML = renderEncuadreForm(encuadre);
-                initializeFormEventListeners(encuadre);
+            try {
+                const encuadre = await db.get('encuadres', encuadreId);
+                if (encuadre) {
+                    content.innerHTML = await renderEncuadreForm(encuadre);
+                    initializeFormEventListeners(encuadre);
+                }
+            } catch (e) {
+                console.error('Error loading encuadre:', e);
+                alert('Error al cargar el encuadre');
             }
         });
     });
 
     // Delete buttons
     content.querySelectorAll('.delete-encuadre').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             const encuadreId = parseInt(btn.dataset.id);
             if (confirm('¿Está seguro de que desea eliminar este encuadre?')) {
-                encuadres = encuadres.filter(e => e.id !== encuadreId);
-                saveEncuadres();
-                updateEncuadresContent();
+                try {
+                    await db.delete('encuadres', encuadreId);
+                    encuadres = encuadres.filter(e => e.id !== encuadreId);
+                    updateEncuadresContent();
+                } catch (e) {
+                    console.error('Error deleting encuadre:', e);
+                    alert('Error al eliminar el encuadre');
+                }
             }
         });
     });
@@ -225,7 +297,7 @@ function initializeFormEventListeners(encuadre = null) {
     const form = content.querySelector('#encuadre-form');
 
     // Form submission
-    form?.addEventListener('submit', (e) => {
+    form?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(form);
         
@@ -242,16 +314,21 @@ function initializeFormEventListeners(encuadre = null) {
             fechas: formData.get('fechas')
         };
 
-        if (encuadre) {
-            // Update existing encuadre
-            encuadres = encuadres.map(e => e.id === encuadre.id ? encuadreData : e);
-        } else {
-            // Add new encuadre
-            encuadres.push(encuadreData);
+        try {
+            if (encuadre) {
+                // Update existing encuadre
+                await db.put('encuadres', encuadreData);
+                encuadres = encuadres.map(e => e.id === encuadre.id ? encuadreData : e);
+            } else {
+                // Add new encuadre
+                await db.add('encuadres', encuadreData);
+                encuadres.push(encuadreData);
+            }
+            updateEncuadresContent();
+        } catch (e) {
+            console.error('Error saving encuadre:', e);
+            alert('Error al guardar el encuadre');
         }
-
-        saveEncuadres();
-        updateEncuadresContent();
     });
 
     // Cancel and back buttons
@@ -259,25 +336,15 @@ function initializeFormEventListeners(encuadre = null) {
     content.querySelector('#btn-volver')?.addEventListener('click', updateEncuadresContent);
 }
 
-// Save encuadres to localStorage
-function saveEncuadres() {
-    try {
-        localStorage.setItem('encuadres', JSON.stringify(encuadres));
-        console.log('Encuadres: Data saved:', encuadres);
-    } catch (e) {
-        console.error('Encuadres: Error saving data:', e);
-    }
-}
-
 // Update main content
-function updateEncuadresContent() {
+async function updateEncuadresContent() {
     console.log('Encuadres: Updating content');
     const content = document.getElementById('content');
     if (!content) {
         console.error('Encuadres: Content element not found');
         return;
     }
-    content.innerHTML = renderEncuadres();
+    content.innerHTML = await renderEncuadres();
     initializeEventListeners();
     console.log('Encuadres: Content updated');
 }
