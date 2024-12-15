@@ -222,10 +222,10 @@ class PlaneacionManager {
                 <div class="flex justify-between items-center">
                     <h2 class="text-2xl font-semibold text-gray-800">Planeaciones</h2>
                     <div class="space-x-2">
-                        <button id="btn-exportar" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                        <button id="btn-exportar-planeacion" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
                             Exportar
                         </button>
-                        <button id="btn-importar" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">
+                        <button id="btn-importar-planeacion" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">
                             Importar
                         </button>
                         <button class="new-planeacion-button bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
@@ -297,17 +297,79 @@ class PlaneacionManager {
         }
     }
 
+    validatePlaneacion(planeacion) {
+        const requiredFields = ['fecha', 'tema', 'asignatura', 'periodosClase', 'objetivo'];
+        const requiredMomentos = ['inicio', 'exploracion', 'transferencia', 'evaluacion'];
+        
+        for (const field of requiredFields) {
+            if (!planeacion[field]) return false;
+        }
+        
+        if (!planeacion.momentos || typeof planeacion.momentos !== 'object') return false;
+        for (const momento of requiredMomentos) {
+            if (!planeacion.momentos[momento]) return false;
+        }
+        
+        return true;
+    }
+
+    async promptEncuadreSelection() {
+        const encuadres = await db.getAll('encuadres');
+        const planesDeArea = await db.getAll('planesDeArea');
+
+        return new Promise((resolve) => {
+            const dialog = document.createElement('div');
+            dialog.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center';
+            dialog.innerHTML = `
+                <div class="bg-white p-8 rounded-lg shadow-xl max-w-lg w-full">
+                    <h3 class="text-lg font-medium mb-4">Seleccionar Encuadre</h3>
+                    <p class="text-gray-600 mb-4">Seleccione el encuadre para asociar con esta planeación:</p>
+                    <select id="encuadre-select" class="w-full p-2 border rounded mb-4">
+                        <option value="">Seleccione un encuadre</option>
+                        ${encuadres.map(encuadre => {
+                            const planArea = planesDeArea.find(p => p.id === encuadre.planDeAreaId);
+                            return `
+                                <option value="${encuadre.id}">
+                                    ${planArea ? `${planArea.asignatura} - Periodo ${encuadre.periodo}` : `Encuadre ${encuadre.id}`}
+                                </option>
+                            `;
+                        }).join('')}
+                    </select>
+                    <div class="flex justify-end space-x-2">
+                        <button id="cancel-encuadre" class="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50">
+                            Cancelar
+                        </button>
+                        <button id="confirm-encuadre" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                            Confirmar
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(dialog);
+
+            dialog.querySelector('#cancel-encuadre').addEventListener('click', () => {
+                document.body.removeChild(dialog);
+                resolve(null);
+            });
+
+            dialog.querySelector('#confirm-encuadre').addEventListener('click', () => {
+                const encuadreId = parseInt(dialog.querySelector('#encuadre-select').value);
+                document.body.removeChild(dialog);
+                resolve(encuadreId);
+            });
+        });
+    }
+
     setupEventListeners() {
         const content = elements.content;
 
-        // New planeacion button
         const newButton = content.querySelector('.new-planeacion-button');
         if (newButton) {
             newButton.addEventListener('click', () => this.handleNewPlaneacion());
         }
 
-        // Export button
-        content.querySelector('#btn-exportar')?.addEventListener('click', async () => {
+        content.querySelector('#btn-exportar-planeacion')?.addEventListener('click', async () => {
             try {
                 const data = await db.getAll('planeaciones');
                 const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -325,8 +387,7 @@ class PlaneacionManager {
             }
         });
 
-        // Import button
-        content.querySelector('#btn-importar')?.addEventListener('click', () => {
+        content.querySelector('#btn-importar-planeacion')?.addEventListener('click', () => {
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = '.json';
@@ -336,26 +397,38 @@ class PlaneacionManager {
                     const text = await file.text();
                     const data = JSON.parse(text);
                     
-                    if (!Array.isArray(data)) {
-                        throw new Error('Invalid data format');
+                    const planeaciones = Array.isArray(data) ? data : [data];
+
+                    for (const planeacion of planeaciones) {
+                        if (!this.validatePlaneacion(planeacion)) {
+                            throw new Error('Formato de datos inválido');
+                        }
                     }
 
-                    await db.clear('planeaciones');
-                    for (const planeacion of data) {
-                        await db.add('planeaciones', planeacion);
+                    for (const planeacion of planeaciones) {
+                        const encuadreId = await this.promptEncuadreSelection();
+                        if (encuadreId === null) {
+                            throw new Error('Importación cancelada');
+                        }
+                        
+                        await db.add('planeaciones', {
+                            ...planeacion,
+                            id: Date.now() + Math.floor(Math.random() * 1000),
+                            encuadreId
+                        });
                     }
                     
-                    this.planeaciones = data;
+                    this.planeaciones = await db.getAll('planeaciones');
                     this.updatePlaneacionesContent();
+                    alert('Planeaciones importadas exitosamente');
                 } catch (e) {
                     console.error('Error importing data:', e);
-                    alert('Error al importar los datos');
+                    alert('Error al importar los datos: ' + e.message);
                 }
             };
             input.click();
         });
 
-        // Edit buttons
         content.querySelectorAll('.edit-button').forEach(btn => {
             btn.addEventListener('click', () => {
                 const id = parseInt(btn.dataset.id);
@@ -363,7 +436,6 @@ class PlaneacionManager {
             });
         });
 
-        // Delete buttons
         content.querySelectorAll('.delete-button').forEach(btn => {
             btn.addEventListener('click', () => {
                 const id = parseInt(btn.dataset.id);
@@ -397,9 +469,6 @@ class PlaneacionManager {
     }
 }
 
-// Create instance
 const planeacionManager = new PlaneacionManager();
-
-// Export the instance and necessary functions
 export const { updatePlaneacionesContent } = planeacionManager;
 export default planeacionManager;

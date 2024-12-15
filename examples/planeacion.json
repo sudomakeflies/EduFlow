@@ -1,0 +1,16 @@
+{
+    "id": null,
+    "fecha": "2023-10-31",
+    "tema": "Sistemas de ecuaciones lineales con dos incógnitas",
+    "asignatura": "Matemáticas",
+    "periodosClase": 2,
+    "objetivo": "Que los estudiantes de grado 9 comprendan cómo resolver sistemas de ecuaciones lineales con dos incógnitas utilizando distintos métodos (sustitución, igualación, y gráficamente), adaptando las estrategias a los niveles de desempeño de los estudiantes.",
+    "encuadreId": null,
+    "momentos": {
+        "inicio": "Actividad lúdica: 'El misterio de los precios'. Los estudiantes trabajan en pares para descubrir el precio de manzanas y naranjas usando ecuaciones sencillas.",
+        "exploracion": "Introducción al concepto de sistemas de ecuaciones. Explicación breve y resolución de un sistema sencillo por el método de igualación en el tablero.",
+        "transferencia": "División de la clase en tres grupos según nivel de desempeño. Cada grupo resuelve sistemas de ecuaciones usando métodos diferentes (gráfico, igualación, sustitución) y desafíos variados.",
+        "evaluacion": "Cierre reflexivo: Exposición de resoluciones en el tablero. Evaluación rápida: Cuestionario de tres preguntas sobre sistemas de ecuaciones."
+    },
+    "observaciones": "Recursos necesarios: Papel milimetrado para graficar (usado en el momento de transferencia para nivel bajo). Fichas de ejercicios por niveles de desempeño (usadas en los momentos de transferencia y evaluación). Pizarra y marcadores para la explicación y exposición (usados en todos los momentos). Calculadoras (si es necesario, usadas en los momentos de transferencia y evaluación). Objetivos por niveles: Ruta 1 (Nivel bajo): Visualizar gráficamente la solución y aprender el método de sustitución. Ruta 2 (Nivel medio): Practicar igualación y sustitución. Ruta 3 (Nivel alto): Dominar la resolución de sistemas y resolver ecuaciones más complejas."
+}

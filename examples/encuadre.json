@@ -1,0 +1,14 @@
+[
+    {
+      "id": null,
+      "planDeAreaId": null,
+      "periodo": 2,
+      "competenciasSaber": "Lorem ipsum dolor sit amet",
+      "competenciasSaberHacer": "Consectetur adipiscing elit",
+      "competenciasSaberSer": "Sed do eiusmod tempor incididunt",
+      "criteriosEvaluacion": "Intermedio",
+      "resultadosAprendizaje": "1. Lorem ipsum dolor sit amet\n2. Consectetur adipiscing elit",
+      "evidenciasAprendizaje": "1. Ut enim ad minim veniam\n2. Duis aute irure dolor",
+      "fechas": "2024-02-15, 2024-02-17, 2024-02-18"
+    }
+  ]

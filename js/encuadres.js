@@ -4,6 +4,11 @@ console.log('Encuadres: Module loaded');
 
 let encuadres = [];
 
+// Generate unique ID - usando la misma implementación que en planeacion.js
+function generateUniqueId() {
+    return Date.now() + Math.floor(Math.random() * 1000);
+}
+
 // Load initial data from IndexedDB
 async function loadInitialData() {
     try {
@@ -26,64 +31,6 @@ async function loadPlanesDeArea() {
         console.error('Encuadres: Error loading planes de area:', e);
         return [];
     }
-}
-
-// Render main content
-async function renderEncuadres() {
-    console.log('Encuadres: Rendering main content');
-    const planesDeArea = await loadPlanesDeArea();
-    
-    return `
-        <div class="space-y-4">
-            <div class="flex justify-between items-center">
-                <h2 class="text-2xl font-bold text-gray-800">Encuadres</h2>
-                <div class="space-x-2">
-                    <button id="btn-exportar" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                        Exportar
-                    </button>
-                    <button id="btn-importar" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">
-                        Importar
-                    </button>
-                    <button id="btn-crear-encuadre" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                        Crear Encuadre
-                    </button>
-                </div>
-            </div>
-            
-            <div class="overflow-x-auto">
-                <table class="min-w-full bg-white border border-gray-300">
-                    <thead>
-                        <tr class="bg-gray-100">
-                            <th class="px-6 py-3 border-b text-left">Plan de Área</th>
-                            <th class="px-6 py-3 border-b text-left">Periodo</th>
-                            <th class="px-6 py-3 border-b text-left">Fechas</th>
-                            <th class="px-6 py-3 border-b text-left">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${encuadres.map(encuadre => {
-                            const planDeArea = planesDeArea.find(p => p.id === encuadre.planDeAreaId);
-                            return `
-                                <tr class="hover:bg-gray-50">
-                                    <td class="px-6 py-4 border-b">${planDeArea ? `${planDeArea.asignatura} - ${planDeArea.grado}` : 'Plan no encontrado'}</td>
-                                    <td class="px-6 py-4 border-b">${encuadre.periodo}</td>
-                                    <td class="px-6 py-4 border-b">${encuadre.fechas}</td>
-                                    <td class="px-6 py-4 border-b">
-                                        <button class="text-blue-600 hover:text-blue-800 mr-2 edit-encuadre" data-id="${encuadre.id}">
-                                            Editar
-                                        </button>
-                                        <button class="text-red-600 hover:text-red-800 delete-encuadre" data-id="${encuadre.id}">
-                                            Eliminar
-                                        </button>
-                                    </td>
-                                </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    `;
 }
 
 // Render form for create/edit
@@ -195,6 +142,84 @@ async function renderEncuadreForm(encuadre = null) {
     `;
 }
 
+// Render main content
+async function renderEncuadres() {
+    console.log('Encuadres: Rendering main content');
+    const planesDeArea = await loadPlanesDeArea();
+    
+    return `
+        <div class="space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-gray-800">Encuadres</h2>
+                <div class="space-x-2">
+                    <button id="btn-exportar" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                        Exportar
+                    </button>
+                    <button id="btn-importar" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">
+                        Importar
+                    </button>
+                    <button id="btn-crear-encuadre" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        Crear Encuadre
+                    </button>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white border border-gray-300">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="px-6 py-3 border-b text-left">Plan de Área</th>
+                            <th class="px-6 py-3 border-b text-left">Periodo</th>
+                            <th class="px-6 py-3 border-b text-left">Fechas</th>
+                            <th class="px-6 py-3 border-b text-left">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${encuadres.map(encuadre => {
+                            const planDeArea = planesDeArea.find(p => p.id === encuadre.planDeAreaId);
+                            return `
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 border-b">${planDeArea ? `${planDeArea.asignatura} - ${planDeArea.grado}` : 'Plan no encontrado'}</td>
+                                    <td class="px-6 py-4 border-b">${encuadre.periodo}</td>
+                                    <td class="px-6 py-4 border-b">${encuadre.fechas}</td>
+                                    <td class="px-6 py-4 border-b">
+                                        <button class="text-blue-600 hover:text-blue-800 mr-2 edit-encuadre" data-id="${encuadre.id}">
+                                            Editar
+                                        </button>
+                                        <button class="text-red-600 hover:text-red-800 delete-encuadre" data-id="${encuadre.id}">
+                                            Eliminar
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Modal para selección de plan de área -->
+        <div id="modal-seleccion-plan" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center">
+            <div class="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full">
+                <h3 class="text-lg font-bold mb-4">Seleccionar Plan de Área</h3>
+                <div class="space-y-4">
+                    <select id="select-plan-area" class="w-full p-2 border rounded">
+                        <option value="">Seleccione un plan</option>
+                    </select>
+                    <div class="flex justify-end space-x-2">
+                        <button id="btn-cancelar-seleccion" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                            Cancelar
+                        </button>
+                        <button id="btn-confirmar-seleccion" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                            Confirmar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 // Initialize event listeners
 function initializeEventListeners() {
     console.log('Encuadres: Initializing event listeners');
@@ -225,7 +250,7 @@ function initializeEventListeners() {
         }
     });
 
-    // Import button
+    // Import button with plan selection
     content.querySelector('#btn-importar')?.addEventListener('click', () => {
         const input = document.createElement('input');
         input.type = 'file';
@@ -234,22 +259,94 @@ function initializeEventListeners() {
             try {
                 const file = e.target.files[0];
                 const text = await file.text();
-                const data = JSON.parse(text);
+                const importedData = JSON.parse(text);
                 
-                if (!Array.isArray(data)) {
+                if (!Array.isArray(importedData)) {
                     throw new Error('Invalid data format');
                 }
 
-                await db.clear('encuadres');
-                for (const encuadre of data) {
-                    await db.add('encuadres', encuadre);
+                // Validar estructura de los encuadres importados
+                const validEncuadres = importedData.filter(encuadre => {
+                    return typeof encuadre === 'object' && encuadre !== null &&
+                           typeof encuadre.competenciasSaber === 'string' &&
+                           typeof encuadre.competenciasSaberHacer === 'string' &&
+                           typeof encuadre.competenciasSaberSer === 'string' &&
+                           typeof encuadre.criteriosEvaluacion === 'string' &&
+                           typeof encuadre.resultadosAprendizaje === 'string' &&
+                           typeof encuadre.evidenciasAprendizaje === 'string' &&
+                           typeof encuadre.fechas === 'string';
+                });
+
+                if (validEncuadres.length === 0) {
+                    throw new Error('No valid encuadres found in import file');
                 }
-                
-                encuadres = data;
-                updateEncuadresContent();
+
+                // Cargar planes de área para el modal
+                const planesDeArea = await loadPlanesDeArea();
+                const selectPlan = content.querySelector('#select-plan-area');
+                selectPlan.innerHTML = `
+                    <option value="">Seleccione un plan</option>
+                    ${planesDeArea.map(plan => `
+                        <option value="${plan.id}">${plan.asignatura} - ${plan.grado}</option>
+                    `).join('')}
+                `;
+
+                // Mostrar modal
+                const modal = content.querySelector('#modal-seleccion-plan');
+                modal.classList.remove('hidden');
+
+                // Manejar selección
+                const btnConfirmar = content.querySelector('#btn-confirmar-seleccion');
+                const btnCancelar = content.querySelector('#btn-cancelar-seleccion');
+
+                btnConfirmar.onclick = async () => {
+                    const planDeAreaId = parseInt(selectPlan.value);
+                    if (!planDeAreaId) {
+                        alert('Por favor seleccione un plan de área');
+                        return;
+                    }
+
+                    try {
+                        // Procesar y guardar los encuadres importados
+                        for (const encuadre of validEncuadres) {
+                            const newEncuadre = {
+                                id: Date.now() + Math.floor(Math.random() * 1000), // Usando la misma implementación que planeacion.js
+                                planDeAreaId: planDeAreaId,
+                                periodo: typeof encuadre.periodo === 'number' ? encuadre.periodo : 1,
+                                competenciasSaber: encuadre.competenciasSaber,
+                                competenciasSaberHacer: encuadre.competenciasSaberHacer,
+                                competenciasSaberSer: encuadre.competenciasSaberSer,
+                                criteriosEvaluacion: encuadre.criteriosEvaluacion,
+                                resultadosAprendizaje: encuadre.resultadosAprendizaje,
+                                evidenciasAprendizaje: encuadre.evidenciasAprendizaje,
+                                fechas: encuadre.fechas
+                            };
+
+                            console.log('Importing encuadre:', newEncuadre); // Debug log
+                            
+                            // Agregar el nuevo encuadre
+                            await db.add('encuadres', newEncuadre);
+                            encuadres.push(newEncuadre);
+                        }
+                        
+                        // Cerrar modal y actualizar vista
+                        modal.classList.add('hidden');
+                        updateEncuadresContent();
+                        
+                        alert(`Se importaron ${validEncuadres.length} encuadres exitosamente`);
+                    } catch (error) {
+                        console.error('Error saving encuadres:', error);
+                        alert('Error al guardar los encuadres importados: ' + error.message);
+                    }
+                };
+
+                btnCancelar.onclick = () => {
+                    modal.classList.add('hidden');
+                };
+
             } catch (e) {
                 console.error('Error importing data:', e);
-                alert('Error al importar los datos');
+                alert('Error al importar los datos: ' + e.message);
             }
         };
         input.click();
@@ -302,7 +399,7 @@ function initializeFormEventListeners(encuadre = null) {
         const formData = new FormData(form);
         
         const encuadreData = {
-            id: encuadre?.id || Date.now(),
+            id: encuadre?.id || (Date.now() + Math.floor(Math.random() * 1000)), // Usando la misma implementación que planeacion.js
             planDeAreaId: parseInt(formData.get('planDeAreaId')),
             periodo: parseInt(formData.get('periodo')),
             competenciasSaber: formData.get('competenciasSaber'),
