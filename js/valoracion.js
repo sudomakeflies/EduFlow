@@ -161,6 +161,9 @@ export async function renderValoracionSection() {
     const cursos = getCursosUnicos();
     console.log('Cursos disponibles:', cursos);
 
+    // Renderizar la lista de planillas primero
+    const listaPlanillasHtml = await renderizarListaPlanillas();
+
     return `
         <section id="valoracion-section" class="space-y-6">
             <div class="flex justify-between items-center mb-6">
@@ -171,7 +174,7 @@ export async function renderValoracionSection() {
             </div>
 
             <div id="lista-planillas-valoracion" class="mb-6">
-                ${await renderizarListaPlanillas()}
+                ${listaPlanillasHtml}
             </div>
 
             <div id="form-planilla-valoracion" class="hidden space-y-6 bg-gray-50 p-6 rounded-lg">
@@ -244,7 +247,10 @@ export async function renderValoracionSection() {
 
 // Función para inicializar los eventos de la sección de valoración
 export async function initializeValoracion() {
-    console.log('Inicializando valoración...');
+    console.log('UI: Initializing valoracion');
+    
+    // Esperar a que la base de datos esté inicializada
+    await db.init();
     
     // Actualizar la lista de planillas inmediatamente
     const listaPlanillas = document.getElementById('lista-planillas-valoracion');
@@ -537,6 +543,8 @@ export async function initializeValoracion() {
         console.log('Evento de importación de estudiantes detectado');
         actualizarTablaValoracion();
     });
+
+    console.log('UI: Valoracion initialized');
 }
 
 // Exportar la estructura de datos para pruebas o uso externo

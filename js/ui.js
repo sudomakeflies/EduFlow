@@ -21,7 +21,7 @@ const sectionTitle = document.getElementById('section-title');
 const content = document.getElementById('content');
 
 // Update content based on section
-export function updateContent(section) {
+export async function updateContent(section) {
     console.log('UI: Updating content for section:', section);
     
     // Remove hash if present and convert to lowercase
@@ -34,7 +34,8 @@ export function updateContent(section) {
         let title = section.charAt(0).toUpperCase() + section.slice(1) || 'Bienvenido';
         // Make title more readable
         title = title === 'planes' ? 'Planes de Área' : 
-               title === 'encuadres' ? 'Encuadres' : title;
+               title === 'encuadres' ? 'Encuadres' : 
+               title === 'valoracion' ? 'Planillas de Valoración' : title;
         sectionTitle.textContent = title;
         console.log('UI: Updated section title to:', sectionTitle.textContent);
     }
@@ -67,13 +68,31 @@ export function updateContent(section) {
                 break;
             case 'valoracion':
                 console.log('UI: Rendering valoracion section');
-                content.innerHTML = renderValoracionSection();
-                console.log('UI: Valoracion section HTML set');
-                requestAnimationFrame(() => {
-                    console.log('UI: Initializing valoracion');
-                    initializeValoracion();
+                // First render a loading state
+                content.innerHTML = `
+                    <div class="flex items-center justify-center p-8">
+                        <div class="text-gray-500">Cargando planillas de valoración...</div>
+                    </div>
+                `;
+                
+                try {
+                    // Wait for the content to be rendered
+                    const valoracionHtml = await renderValoracionSection();
+                    content.innerHTML = valoracionHtml;
+                    console.log('UI: Valoracion section HTML set');
+                    
+                    // Initialize after content is rendered
+                    await initializeValoracion();
                     console.log('UI: Valoracion initialized');
-                });
+                } catch (error) {
+                    console.error('UI: Error in valoracion section:', error);
+                    content.innerHTML = `
+                        <div class="text-red-600 p-4">
+                            <h2 class="text-2xl font-semibold mb-4">Error</h2>
+                            <p>Ocurrió un error al cargar las planillas de valoración: ${error.message}</p>
+                        </div>
+                    `;
+                }
                 break;
             default:
                 console.log('UI: Rendering default welcome section');

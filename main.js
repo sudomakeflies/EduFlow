@@ -19,10 +19,10 @@ console.log('Main: Service worker registered');
 
 // Create a global app object and expose updateContent and other functions
 window.app = {
-    updateContent: function(section) {
+    updateContent: async function(section) {
         console.log('Main: Received request to update content for section:', section);
         console.log('Main: Current hash:', window.location.hash);
-        updateContent(section);
+        await updateContent(section);
         console.log('Main: Content update completed for section:', section);
     }
 };
@@ -32,10 +32,14 @@ console.log('Main: Global app object created with updateContent function');
 const initialHash = window.location.hash.slice(1);
 if (initialHash) {
     console.log('Main: Found initial hash in URL:', initialHash);
-    window.app.updateContent(initialHash);
+    window.app.updateContent(initialHash).catch(error => {
+        console.error('Main: Error handling initial hash:', error);
+    });
 } else {
     console.log('Main: No initial hash, loading default view');
-    window.app.updateContent('');
+    window.app.updateContent('').catch(error => {
+        console.error('Main: Error loading default view:', error);
+    });
 }
 
 // Listen for hash changes
@@ -45,7 +49,9 @@ window.addEventListener('hashchange', (event) => {
     console.log('Main: New URL:', event.newURL);
     const newHash = window.location.hash.slice(1);
     console.log('Main: Hash changed to:', newHash);
-    window.app.updateContent(newHash);
+    window.app.updateContent(newHash).catch(error => {
+        console.error('Main: Error handling hash change:', error);
+    });
 });
 
 console.log('Main: Application initialization completed');
