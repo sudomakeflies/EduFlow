@@ -4,6 +4,11 @@ console.log('PlanesDeArea: Module loaded');
 
 let planesDeArea = [];
 
+// Generate unique ID - usando la misma implementación que en encuadres.js
+function generateUniqueId() {
+    return Date.now() + Math.floor(Math.random() * 1000);
+}
+
 // Load initial data from IndexedDB
 async function loadInitialData() {
     try {
@@ -17,6 +22,15 @@ async function loadInitialData() {
 
 // Load data when module is imported
 loadInitialData();
+
+// Validar estructura del plan
+function isValidPlan(plan) {
+    return typeof plan === 'object' && plan !== null &&
+           typeof plan.asignatura === 'string' &&
+           typeof plan.grado === 'string' &&
+           typeof plan.periodos === 'number' &&
+           typeof plan.contenido === 'object';
+}
 
 // Render main content
 function renderPlanesDeArea() {
@@ -110,22 +124,36 @@ function initializeEventListeners() {
             try {
                 const file = e.target.files[0];
                 const text = await file.text();
-                const data = JSON.parse(text);
+                let importedData = JSON.parse(text);
                 
-                if (!Array.isArray(data)) {
-                    throw new Error('Invalid data format');
+                // Convertir objeto único a array si es necesario
+                if (!Array.isArray(importedData)) {
+                    importedData = [importedData];
+                }
+
+                // Validar estructura de los planes importados
+                const validPlanes = importedData.filter(isValidPlan);
+
+                if (validPlanes.length === 0) {
+                    throw new Error('No valid planes found in import file');
                 }
 
                 await db.clear('planesDeArea');
-                for (const plan of data) {
-                    await db.add('planesDeArea', plan);
+                for (const plan of validPlanes) {
+                    // Generar nuevo ID antes de validar y guardar
+                    const planToSave = {
+                        ...plan,
+                        id: generateUniqueId()
+                    };
+                    await db.add('planesDeArea', planToSave);
                 }
                 
-                planesDeArea = data;
+                planesDeArea = await db.getAll('planesDeArea');
                 updatePlanesDeAreaContent();
+                alert(`Se importaron ${validPlanes.length} planes exitosamente`);
             } catch (e) {
                 console.error('Error importing data:', e);
-                alert('Error al importar los datos');
+                alert('Error al importar los datos: ' + e.message);
             }
         };
         input.click();
@@ -313,8 +341,14 @@ function initializeFormEventListeners(plan = null) {
     content.querySelectorAll('.periodo-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             const periodo = tab.dataset.periodo;
-            content.querySelectorAll('.periodo-tab').forEach(t => 
-                t.classList.toggle('bg-blue-100 text-blue-700', t === tab));
+            // Toggle classes separately
+            content.querySelectorAll('.periodo-tab').forEach(t => {
+                t.classList.remove('bg-blue-100', 'text-blue-700');
+                t.classList.add('text-gray-500', 'hover:text-gray-700');
+            });
+            tab.classList.remove('text-gray-500', 'hover:text-gray-700');
+            tab.classList.add('bg-blue-100', 'text-blue-700');
+            
             content.querySelectorAll('.periodo-content').forEach(content => 
                 content.classList.toggle('hidden', content.dataset.periodo !== periodo));
         });
@@ -353,7 +387,7 @@ function initializeFormEventListeners(plan = null) {
         const formData = new FormData(form);
         
         const planData = {
-            id: plan?.id || Date.now(),
+            id: plan?.id || generateUniqueId(), // Usar generateUniqueId para nuevos planes
             asignatura: formData.get('asignatura'),
             grado: formData.get('grado'),
             periodos: parseInt(formData.get('periodos')),

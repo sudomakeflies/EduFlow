@@ -52,6 +52,50 @@ function calcularPromedio(notas) {
     return (suma / notasValidas.length).toFixed(2);
 }
 
+// Función para exportar todas las planillas a JSON
+async function exportarTodasPlanillasJSON() {
+    try {
+        const planillas = await db.getAll('planillasValoracion');
+        const jsonContent = JSON.stringify(planillas, null, 2);
+        const blob = new Blob([jsonContent], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'planillas_valoracion.json';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('Error al exportar planillas:', error);
+        alert('Error al exportar las planillas');
+    }
+}
+
+// Función para exportar planilla a JSON
+async function exportarPlanillaJSON(curso, asignatura) {
+    try {
+        const planilla = await db.get('planillasValoracion', [curso, asignatura]);
+        if (!planilla) {
+            throw new Error('Planilla no encontrada');
+        }
+
+        const jsonContent = JSON.stringify(planilla, null, 2);
+        const blob = new Blob([jsonContent], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `planilla_${curso}_${asignatura}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('Error al exportar planilla:', error);
+        alert('Error al exportar la planilla');
+    }
+}
+
 // Función para guardar una planilla
 async function guardarPlanilla(curso, asignatura, criterios, estudiantes) {
     try {
@@ -142,6 +186,10 @@ async function renderizarListaPlanillas() {
                                             onclick="window.editarPlanillaValoracion('${p.curso}', '${p.asignatura}')">
                                         ✏️ Editar
                                     </button>
+                                    <button class="text-green-600 hover:text-green-800"
+                                            onclick="window.exportarPlanillaValoracion('${p.curso}', '${p.asignatura}')">
+                                        📥 Exportar
+                                    </button>
                                     <button class="text-red-600 hover:text-red-800"
                                             onclick="window.eliminarPlanillaValoracionConfirm('${p.curso}', '${p.asignatura}')">
                                         🗑️ Eliminar
@@ -169,9 +217,14 @@ export async function renderValoracionSection() {
         <section id="valoracion-section" class="space-y-6">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-semibold text-gray-800">Planillas de Valoración</h2>
-                <button id="nueva-planilla-valoracion" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                    Nueva Planilla
-                </button>
+                <div class="space-x-2">
+                    <button id="exportar-todas-planillas" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                        Exportar Todo
+                    </button>
+                    <button id="nueva-planilla-valoracion" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                        Nueva Planilla
+                    </button>
+                </div>
             </div>
 
             <div id="lista-planillas-valoracion" class="mb-6">
@@ -309,6 +362,11 @@ export async function initializeValoracion() {
         }
     };
 
+    window.exportarPlanillaValoracion = async (curso, asignatura) => {
+        console.log('Exportando planilla:', curso, asignatura);
+        await exportarPlanillaJSON(curso, asignatura);
+    };
+
     window.eliminarPlanillaValoracionConfirm = async (curso, asignatura) => {
         console.log('Confirmando eliminación de planilla:', curso, asignatura);
         if (confirm('¿Está seguro de que desea eliminar esta planilla?')) {
@@ -340,6 +398,11 @@ export async function initializeValoracion() {
 
     // Event Listeners
     document.addEventListener('click', (e) => {
+        if (e.target.id === 'exportar-todas-planillas') {
+            console.log('Exportando todas las planillas');
+            exportarTodasPlanillasJSON();
+        }
+
         if (e.target.id === 'nueva-planilla-valoracion') {
             console.log('Iniciando nueva planilla');
             const formPlanilla = document.getElementById('form-planilla-valoracion');

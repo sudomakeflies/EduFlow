@@ -4,6 +4,7 @@ import db from './db.js';
 // Lista de asignaturas disponibles
 const ASIGNATURAS = [
     'Matemáticas',
+    'Física',
     'Español',
     'Ciencias Naturales',
     'Ciencias Sociales',
