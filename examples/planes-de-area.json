@@ -1,0 +1,82 @@
+[
+  {
+    "id": 1734305414988,
+    "asignatura": "Matemáticas",
+    "grado": "10°",
+    "periodos": 4,
+    "contenido": {
+      "periodo1": {
+        "competencias": {
+          "saber": "Resolver problemas matemáticos aplicando álgebra básica.",
+          "saberHacer": "Aplicar ecuaciones lineales en situaciones cotidianas.",
+          "saberSer": "Desarrollar perseverancia al resolver problemas."
+        },
+        "matriz": [
+          {
+            "competenciaContenido": "Ecuaciones lineales",
+            "estandar": "Identificar ecuaciones lineales y sus soluciones.",
+            "competenciaProceso": "Modelar situaciones usando ecuaciones.",
+            "dbaAprendizajes": "Resolver ecuaciones lineales con una incógnita.",
+            "estrategias": "Trabajo en grupo, ejercicios prácticos.",
+            "criteriosEvaluacion": "Correcta aplicación del procedimiento.",
+            "evidenciasAprendizaje": "Soluciones precisas a problemas de álgebra."
+          }
+        ]
+      },
+      "periodo2": {
+        "competencias": {
+          "saber": "Interpretar y graficar funciones lineales.",
+          "saberHacer": "Graficar rectas en el plano cartesiano.",
+          "saberSer": "Adquirir precisión en la representación gráfica."
+        },
+        "matriz": [
+          {
+            "competenciaContenido": "Funciones lineales",
+            "estandar": "Graficar funciones en el plano cartesiano.",
+            "competenciaProceso": "Interpretar el comportamiento de una función lineal.",
+            "dbaAprendizajes": "Representar funciones y calcular pendientes.",
+            "estrategias": "Uso de software educativo y actividades prácticas.",
+            "criteriosEvaluacion": "Exactitud en las gráficas y cálculos.",
+            "evidenciasAprendizaje": "Gráficas claras y correctas."
+          }
+        ]
+      },
+      "periodo3": {
+        "competencias": {
+          "saber": "Aplicar conceptos de sistemas de ecuaciones lineales.",
+          "saberHacer": "Resolver sistemas de ecuaciones por métodos algebraicos.",
+          "saberSer": "Fomentar el pensamiento crítico en la resolución de problemas."
+        },
+        "matriz": [
+          {
+            "competenciaContenido": "Sistemas de ecuaciones lineales",
+            "estandar": "Resolver sistemas con métodos algebraicos y gráficos.",
+            "competenciaProceso": "Analizar y aplicar sistemas de ecuaciones.",
+            "dbaAprendizajes": "Resolver problemas con sistemas de ecuaciones.",
+            "estrategias": "Actividades prácticas y resolución en parejas.",
+            "criteriosEvaluacion": "Correcta identificación de soluciones.",
+            "evidenciasAprendizaje": "Soluciones precisas y justificadas."
+          }
+        ]
+      },
+      "periodo4": {
+        "competencias": {
+          "saber": "Comprender el concepto de funciones cuadráticas.",
+          "saberHacer": "Graficar y analizar funciones cuadráticas.",
+          "saberSer": "Valorar el aprendizaje a través de la práctica."
+        },
+        "matriz": [
+          {
+            "competenciaContenido": "Funciones cuadráticas",
+            "estandar": "Analizar y graficar funciones cuadráticas.",
+            "competenciaProceso": "Interpretar el vértice, raíces y trayectoria.",
+            "dbaAprendizajes": "Resolver y graficar funciones cuadráticas.",
+            "estrategias": "Uso de gráficas manuales y digitales.",
+            "criteriosEvaluacion": "Claridad en la representación gráfica.",
+            "evidenciasAprendizaje": "Representaciones completas y correctas."
+          }
+        ]
+      }
+    }
+  }
+]
