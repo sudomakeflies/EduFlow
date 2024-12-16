@@ -21,7 +21,11 @@ async function loadInitialData() {
 }
 
 // Load data when module is imported
-loadInitialData();
+//loadInitialData();
+if (window.location.hash == "#planes") {
+    console.log('App: Loading initial data based on hash');
+    this.loadInitialData();
+}
 
 // Validar estructura del plan
 function isValidPlan(plan) {
@@ -41,13 +45,13 @@ function renderPlanesDeArea() {
                 <h2 class="text-2xl font-bold text-gray-800">Planes de Área</h2>
                 <div class="space-x-2">
                     <button id="btn-exportar" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                        Exportar
+                        📤
                     </button>
                     <button id="btn-importar" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">
-                        Importar
+                        📥
                     </button>
                     <button id="btn-crear-plan" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                        Crear Plan
+                        ➕
                     </button>
                 </div>
             </div>

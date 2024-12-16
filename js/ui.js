@@ -41,6 +41,19 @@ export async function updateContent(section) {
     }
 
     try {
+
+        // Aquí se maneja si section está vacío o no coincide con una sección válida
+        if (!section) {
+            console.log('UI: No valid section, rendering default welcome section');
+            content.innerHTML = `
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">¡Bienvenido a EduFlow!</h2>
+                <p class="text-gray-600">
+                    Selecciona una opción del menú para comenzar a gestionar los flujos de gestión de la enseñanza-aprendizaje.
+                </p>
+            `;
+            return; // Salimos temprano, ya que hemos manejado el caso predeterminado
+        }
+
         switch(section) {
             case 'planes':
                 console.log('UI: Attempting to render planes de area section');
@@ -94,12 +107,21 @@ export async function updateContent(section) {
                     `;
                 }
                 break;
+            case 'reportes':
+                    console.log('UI: Rendering configuracion section');
+                    content.innerHTML = `
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Reportes</h2>
+                        <p class="text-gray-600">
+                            Modulo reportes en construcción.
+                        </p>
+                    `;
+                    break;
             default:
                 console.log('UI: Rendering default welcome section');
                 content.innerHTML = `
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">¡Bienvenido a EduFlow!</h2>
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">¡Bienvenido a EduFlow! (Default)</h2>
                     <p class="text-gray-600">
-                        Selecciona una opción del menú para comenzar a gestionar tu institución educativa.
+                        Selecciona una opción del menú para comenzar a gestionar los flujos de gestión de la enseñanza-aprendizaje.
                     </p>
                 `;
         }

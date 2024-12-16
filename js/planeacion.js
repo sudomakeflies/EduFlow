@@ -12,7 +12,11 @@ class PlaneacionManager {
         this.createPlaneacionForm = this.createPlaneacionForm.bind(this);
         this.handleNewPlaneacion = this.handleNewPlaneacion.bind(this);
         this.handleEditPlaneacion = this.handleEditPlaneacion.bind(this);
-        this.loadInitialData();
+        //this.loadInitialData();
+        if (window.location.hash == "#planeaciones") {
+            console.log('App: Loading initial data based on hash');
+            this.loadInitialData();
+        }
     }
 
     async loadInitialData() {
@@ -223,13 +227,13 @@ class PlaneacionManager {
                     <h2 class="text-2xl font-semibold text-gray-800">Planeaciones</h2>
                     <div class="space-x-2">
                         <button id="btn-exportar-planeacion" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                            Exportar
+                            📤
                         </button>
                         <button id="btn-importar-planeacion" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">
-                            Importar
+                            📥
                         </button>
                         <button class="new-planeacion-button bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
-                            Crear Nueva Planeación
+                            ➕
                         </button>
                     </div>
                 </div>

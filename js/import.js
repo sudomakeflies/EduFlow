@@ -5,23 +5,37 @@ let importedStudents = [];
 // Evento personalizado para notificar cuando se importan estudiantes
 export const STUDENTS_IMPORTED_EVENT = 'studentsImported';
 
+// Objeto para manejar la gestión de estudiantes de manera centralizada
+const StudentManager = {
+    students: [],
+    
+    setStudents(newStudents) {
+        this.students = newStudents;
+        // Disparar evento cuando se actualizan los estudiantes
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent(STUDENTS_IMPORTED_EVENT, {
+                detail: { students: this.students }
+            }));
+        }
+    },
+    
+    getStudents() {
+        return this.students;
+    }
+};
+
 // Cargar estudiantes guardados al inicio
 async function loadSavedStudents() {
     try {
         const students = await db.getAll('estudiantes');
         if (students && students.length > 0) {
-            importedStudents = students.map(student => ({
+            const formattedStudents = students.map(student => ({
                 'Nombre Completo': student.nombreCompleto,
                 'Curso': student.curso
             }));
-            console.log('Import: Loaded saved students:', importedStudents);
             
-            // Disparar evento para notificar que hay estudiantes cargados
-            if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent(STUDENTS_IMPORTED_EVENT, {
-                    detail: { students: importedStudents }
-                }));
-            }
+            StudentManager.setStudents(formattedStudents);
+            console.log('Import: Loaded saved students:', formattedStudents);
         }
     } catch (e) {
         console.error('Import: Error loading saved students:', e);
@@ -31,7 +45,7 @@ async function loadSavedStudents() {
 // Función para obtener los estudiantes importados
 export function getImportedStudents() {
     console.log('Import: Getting imported students:', importedStudents);
-    return importedStudents;
+    return StudentManager.getStudents();
 }
 
 export async function initializeImport() {
@@ -39,16 +53,14 @@ export async function initializeImport() {
     await loadSavedStudents();
 
     const fileUpload = document.getElementById('file-upload');
-    const studentTable = document.getElementById('student-table')?.getElementsByTagName('tbody')[0];
-    const saveButton = document.getElementById('save-button');
-    const cancelButton = document.getElementById('cancel-button');
+    const studentTable = document.getElementById('student-table')?.getElementsByTagName('tbody')[0];   
     const importMessage = document.getElementById('import-message');
 
     // Mostrar estudiantes existentes si hay
-    if (studentTable && importedStudents.length > 0) {
+    if (studentTable && StudentManager.students.length > 0) {
         console.log('Import: Displaying existing students in table');
         studentTable.innerHTML = '';
-        importedStudents.forEach(student => {
+        StudentManager.forEach(student => {
             const row = studentTable.insertRow();
             const nameCell = row.insertCell();
             const courseCell = row.insertCell();
@@ -71,6 +83,9 @@ export async function initializeImport() {
                                 importedStudents = results.data.filter(student => 
                                     student['Nombre Completo'] && (student['Curso'] || student['Grado'])
                                 );
+
+                                // Usar el método centralizado para establecer estudiantes
+                                StudentManager.setStudents(importedStudents);
                                 
                                 importedStudents.forEach(student => {
                                     const row = studentTable.insertRow();
@@ -118,57 +133,7 @@ export async function initializeImport() {
                 importMessage.className = 'mt-2 text-sm text-red-500';
             }
         });
-    }
-
-    if (saveButton) {
-        saveButton.addEventListener('click', async () => {
-            if (importedStudents.length > 0) {
-                console.log('Import: Saving imported students');
-                
-                // Guardar en IndexedDB
-                try {
-                    await db.clear('estudiantes');
-                    for (const student of importedStudents) {
-                        await db.add('estudiantes', {
-                            nombreCompleto: student['Nombre Completo'],
-                            curso: student['Curso'] || student['Grado']
-                        });
-                    }
-                    console.log('Import: Students saved to IndexedDB');
-                    importMessage.textContent = 'Datos guardados correctamente.';
-                    importMessage.className = 'mt-2 text-sm text-green-500';
-                    
-                    // Disparar evento cuando se guardan los estudiantes
-                    window.dispatchEvent(new CustomEvent(STUDENTS_IMPORTED_EVENT, {
-                        detail: { students: importedStudents }
-                    }));
-                    console.log('Import: Students saved event dispatched');
-                } catch (e) {
-                    console.error('Import: Error saving students to IndexedDB:', e);
-                    importMessage.textContent = 'Error al guardar los datos.';
-                    importMessage.className = 'mt-2 text-sm text-red-500';
-                }
-            } else {
-                importMessage.textContent = 'No hay datos para guardar.';
-                importMessage.className = 'mt-2 text-sm text-red-500';
-            }
-        });
-    }
-
-    if (cancelButton) {
-        cancelButton.addEventListener('click', () => {
-            console.log('Import: Cancel button clicked');
-            const content = document.getElementById('content');
-            if (content) {
-                content.innerHTML = `
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">¡Bienvenido a EduFlow!</h2>
-                    <p class="text-gray-600">
-                        Selecciona una opción del menú para comenzar a gestionar tu institución educativa.
-                    </p>
-                `;
-            }
-        });
-    }
+    }        
 }
 
 export function renderImportSection() {
@@ -209,17 +174,6 @@ export function renderImportSection() {
                         <tbody>
                         </tbody>
                     </table>
-                </div>
-                
-                <div class="flex justify-end space-x-4">
-                    <button id="cancel-button"
-                            class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                        Cancelar
-                    </button>
-                    <button id="save-button"
-                            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                        Guardar
-                    </button>
                 </div>
             </div>
         </section>

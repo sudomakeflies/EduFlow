@@ -219,10 +219,10 @@ export async function renderValoracionSection() {
                 <h2 class="text-2xl font-semibold text-gray-800">Planillas de Valoración</h2>
                 <div class="space-x-2">
                     <button id="exportar-todas-planillas" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                        Exportar Todo
+                        📤
                     </button>
                     <button id="nueva-planilla-valoracion" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                        Nueva Planilla
+                        ➕
                     </button>
                 </div>
             </div>

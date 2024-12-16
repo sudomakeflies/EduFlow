@@ -5,7 +5,7 @@ import db from './db.js';
 const ASIGNATURAS = [
     'Matemáticas',
     'Física',
-    'Español',
+    'Español',  
     'Ciencias Naturales',
     'Ciencias Sociales',
     'Inglés',
@@ -48,9 +48,13 @@ function getHoraActual() {
 async function getAusentes(fecha, curso, hora) {
     try {
         const planilla = await db.get('asistencia', `${fecha}-${curso}-${hora}`);
-        return planilla?.ausentes || [];
+        return { 
+            ausentes: planilla?.ausentes || [],
+            excusasJustificadas: planilla?.excusasJustificadas || []
+        };
     } catch (e) {
         console.error('Error getting ausentes:', e);
+        return { ausentes: [], excusasJustificadas: [] };
         return [];
     }
 }
@@ -67,7 +71,7 @@ async function getAsignatura(fecha, curso, hora) {
 }
 
 // Función para guardar la asistencia
-async function guardarAsistencia(fecha, curso, hora, asignatura, ausentes) {
+async function guardarAsistencia(fecha, curso, hora, asignatura, ausentes, excusasJustificadas = []) {
     try {
         const id = `${fecha}-${curso}-${hora}`;
         await db.put('asistencia', {
@@ -76,9 +80,10 @@ async function guardarAsistencia(fecha, curso, hora, asignatura, ausentes) {
             curso,
             hora,
             asignatura,
-            ausentes
+            ausentes,
+            excusasJustificadas
         });
-        console.log('Asistencia guardada:', { fecha, curso, hora, asignatura, ausentes });
+        console.log('Asistencia guardada:', { fecha, curso, hora, asignatura, ausentes, excusasJustificadas });
         return true;
     } catch (e) {
         console.error('Error saving attendance:', e);
@@ -135,6 +140,7 @@ async function renderizarListaPlanillas() {
                         <th class="px-4 py-2 border-b bg-gray-100">Curso</th>
                         <th class="px-4 py-2 border-b bg-gray-100">Asignatura</th>
                         <th class="px-4 py-2 border-b bg-gray-100">Ausentes</th>
+                        <th class="px-4 py-2 border-b bg-gray-100">Excusas Justificadas</th>
                         <th class="px-4 py-2 border-b bg-gray-100">Acciones</th>
                     </tr>
                 </thead>
@@ -146,6 +152,7 @@ async function renderizarListaPlanillas() {
                             <td class="px-4 py-2 border-b">${p.curso}</td>
                             <td class="px-4 py-2 border-b">${p.asignatura}</td>
                             <td class="px-4 py-2 border-b">${p.ausentes.length} estudiantes</td>
+                            <td class="px-4 py-2 border-b">${p.excusasJustificadas?.length || 0} estudiantes</td>
                             <td class="px-4 py-2 border-b">
                                 <div class="flex space-x-2">
                                     <button class="text-blue-600 hover:text-blue-800"
@@ -177,13 +184,13 @@ export function renderAsistenciaSection() {
                 <h2 class="text-2xl font-semibold text-gray-800">Planillas de Asistencia</h2>
                 <div class="space-x-2">
                     <button id="btn-exportar" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                        Exportar
+                        📤
                     </button>
                     <button id="btn-importar" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">
-                        Importar
+                        📥
                     </button>
                     <button id="nueva-planilla" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                        Nueva Planilla
+                        ➕
                     </button>
                 </div>
             </div>
@@ -292,45 +299,84 @@ export function initializeAsistencia() {
             const planillaContainer = document.getElementById('planilla-container');
             if (planillaContainer) {
                 const estudiantes = getEstudiantesPorCurso(curso);
-                const ausentes = await getAusentes(fecha, curso, hora);
+                //const ausentes = await getAusentes(fecha, curso, hora);
+                const { ausentes, excusasJustificadas } = await getAusentes(fecha, curso, hora);
                 
-                planillaContainer.innerHTML = `
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full bg-white border border-gray-300">
-                            <thead>
-                                <tr>
-                                    <th class="px-6 py-3 border-b border-gray-300 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase">
-                                        Nombre Completo
-                                    </th>
-                                    <th class="px-6 py-3 border-b border-gray-300 bg-gray-100 text-center text-xs font-semibold text-gray-600 uppercase">
-                                        Ausente
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${estudiantes.map(estudiante => `
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-4 border-b border-gray-300">
-                                            ${estudiante}
-                                        </td>
-                                        <td class="px-6 py-4 border-b border-gray-300 text-center">
-                                            <input type="checkbox" 
-                                                   class="form-checkbox h-5 w-5 text-blue-600 rounded border-gray-300"
-                                                   ${ausentes.includes(estudiante) ? 'checked' : ''}
-                                                   data-estudiante="${estudiante}">
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
+                planillaContainer.innerHTML = renderizarPlanillaConEstudiantes(
+                    estudiantes, 
+                    ausentes, 
+                    excusasJustificadas
+                );
+                
+                // Agregar evento para habilitar/deshabilitar checkbox de excusa
+                agregarEventosExcusas();
             }
             
             // Guardar la hora actual para la edición
             formPlanilla.dataset.editandoHora = hora;
         }
     };
+
+    // Función para renderizar la planilla con estudiantes
+    function renderizarPlanillaConEstudiantes(estudiantes, ausentes = [], excusasJustificadas = []) {
+        return `
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white border border-gray-300">
+                    <thead>
+                        <tr>
+                            <th class="px-6 py-3 border-b border-gray-300 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase">
+                                Nombre Completo
+                            </th>
+                            <th class="px-6 py-3 border-b border-gray-300 bg-gray-100 text-center text-xs font-semibold text-gray-600 uppercase">
+                                Ausente
+                            </th>
+                            <th class="px-6 py-3 border-b border-gray-300 bg-gray-100 text-center text-xs font-semibold text-gray-600 uppercase">
+                                Excusa Justificada
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${estudiantes.map(estudiante => `
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 border-b border-gray-300">
+                                    ${estudiante}
+                                </td>
+                                <td class="px-6 py-4 border-b border-gray-300 text-center">
+                                    <input type="checkbox" 
+                                           class="form-checkbox ausencia-checkbox h-5 w-5 text-blue-600 rounded border-gray-300"
+                                           ${ausentes.includes(estudiante) ? 'checked' : ''}
+                                           data-estudiante="${estudiante}">
+                                </td>
+                                <td class="px-6 py-4 border-b border-gray-300 text-center">
+                                    <input type="checkbox" 
+                                       class="form-checkbox excusa-checkbox h-5 w-5 text-green-600 rounded border-gray-300"
+                                       ${excusasJustificadas.includes(estudiante) ? 'checked' : ''}
+                                       data-estudiante="${estudiante}"
+                                       ${!ausentes.includes(estudiante) ? 'disabled' : ''}>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    // Función para agregar eventos de excusas
+    function agregarEventosExcusas() {
+        document.querySelectorAll('.ausencia-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const estudiante = this.dataset.estudiante;
+                const excusaCheckbox = document.querySelector(`.excusa-checkbox[data-estudiante="${estudiante}"]`);
+                if (excusaCheckbox) {
+                    excusaCheckbox.disabled = !this.checked;
+                    if (!this.checked) {
+                        excusaCheckbox.checked = false;
+                    }
+                }
+            });
+        });
+    }
 
     window.eliminarPlanillaConfirm = async (fecha, curso, hora) => {
         if (confirm('¿Está seguro de que desea eliminar esta planilla?')) {
@@ -446,15 +492,20 @@ export function initializeAsistencia() {
                 return;
             }
 
-            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            const checkboxes = document.querySelectorAll('.ausencia-checkbox');
             const ausentes = Array.from(checkboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.dataset.estudiante);
+
+            const excusaCheckboxes = document.querySelectorAll('.excusa-checkbox:not(:disabled)');
+            const excusasJustificadas = Array.from(excusaCheckboxes)
                 .filter(cb => cb.checked)
                 .map(cb => cb.dataset.estudiante);
 
             // Usar la hora existente si está editando, o crear una nueva
             const hora = formPlanilla?.dataset.editandoHora || getHoraActual();
             
-            if (await guardarAsistencia(fecha, curso, hora, asignatura, ausentes)) {
+            if (await guardarAsistencia(fecha, curso, hora, asignatura, ausentes, excusasJustificadas)) {
                 // Volver a la lista
                 if (formPlanilla) {
                     formPlanilla.classList.add('hidden');
@@ -481,36 +532,7 @@ export function initializeAsistencia() {
             const planillaContainer = document.getElementById('planilla-container');
             if (planillaContainer) {
                 const estudiantes = getEstudiantesPorCurso(curso);
-                planillaContainer.innerHTML = `
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full bg-white border border-gray-300">
-                            <thead>
-                                <tr>
-                                    <th class="px-6 py-3 border-b border-gray-300 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase">
-                                        Nombre Completo
-                                    </th>
-                                    <th class="px-6 py-3 border-b border-gray-300 bg-gray-100 text-center text-xs font-semibold text-gray-600 uppercase">
-                                        Ausente
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${estudiantes.map(estudiante => `
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-4 border-b border-gray-300">
-                                            ${estudiante}
-                                        </td>
-                                        <td class="px-6 py-4 border-b border-gray-300 text-center">
-                                            <input type="checkbox" 
-                                                   class="form-checkbox h-5 w-5 text-blue-600 rounded border-gray-300"
-                                                   data-estudiante="${estudiante}">
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
+                planillaContainer.innerHTML = renderizarPlanillaConEstudiantes(estudiantes);
             }
         }
     }
