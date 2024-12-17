@@ -295,13 +295,27 @@ function renderPlanForm(plan = null) {
                                         <tbody class="matriz-body" data-periodo="${i + 1}">
                                             ${plan?.contenido?.[`periodo${i + 1}`]?.matriz?.map(row => `
                                                 <tr>
-                                                    <td class="border p-2"><input type="text" class="w-full border-gray-300 rounded-md" value="${row.competenciaContenido}"></td>
-                                                    <td class="border p-2"><input type="text" class="w-full border-gray-300 rounded-md" value="${row.estandar}"></td>
-                                                    <td class="border p-2"><input type="text" class="w-full border-gray-300 rounded-md" value="${row.competenciaProceso}"></td>
-                                                    <td class="border p-2"><input type="text" class="w-full border-gray-300 rounded-md" value="${row.dbaAprendizajes}"></td>
-                                                    <td class="border p-2"><input type="text" class="w-full border-gray-300 rounded-md" value="${row.estrategias}"></td>
-                                                    <td class="border p-2"><input type="text" class="w-full border-gray-300 rounded-md" value="${row.criteriosEvaluacion}"></td>
-                                                    <td class="border p-2"><input type="text" class="w-full border-gray-300 rounded-md" value="${row.evidenciasAprendizaje}"></td>
+                                                    <td class="border p-2">
+                                                        <textarea rows="10" class="w-full h-auto border-gray-300 rounded-md resize-y">${row.competenciaContenido}</textarea>
+                                                        </td>
+                                                        <td class="border p-2">
+                                                        <textarea rows="10" class="w-full h-auto border-gray-300 rounded-md resize-y">${row.estandar}</textarea>
+                                                        </td>
+                                                        <td class="border p-2">
+                                                        <textarea rows="10" class="w-full h-auto border-gray-300 rounded-md resize-y">${row.competenciaProceso}</textarea>
+                                                        </td>
+                                                        <td class="border p-2">
+                                                        <textarea rows="10" class="w-full h-auto border-gray-300 rounded-md resize-y">${row.dbaAprendizajes}</textarea>
+                                                        </td>
+                                                        <td class="border p-2">
+                                                        <textarea rows="10" class="w-full h-auto border-gray-300 rounded-md resize-y">${row.estrategias}</textarea>
+                                                        </td>
+                                                        <td class="border p-2">
+                                                        <textarea rows="10" class="w-full h-auto border-gray-300 rounded-md resize-y">${row.criteriosEvaluacion}</textarea>
+                                                        </td>
+                                                        <td class="border p-2">
+                                                        <textarea rows="10" class="w-full h-auto border-gray-300 rounded-md resize-y">${row.evidenciasAprendizaje}</textarea>
+                                                        </td>
                                                     <td class="border p-2">
                                                         <button type="button" class="text-red-600 hover:text-red-800 delete-row">Eliminar</button>
                                                     </td>

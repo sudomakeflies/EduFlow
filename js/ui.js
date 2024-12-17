@@ -116,6 +116,12 @@ export async function updateContent(section) {
                         </p>
                     `;
                     break;
+            case 'configuracion':
+                console.log('UI: Rendering configuracion section');
+                import('./configuracion.js').then(module => {
+                    module.renderConfiguracionSection(content);
+                });
+                break;
             default:
                 console.log('UI: Rendering default welcome section');
                 content.innerHTML = `
@@ -145,6 +151,10 @@ export function initializeSidebar() {
             console.log('UI: Toggling sidebar');
             sidebar.classList.toggle('hidden');
         });
+        sidebarToggle.addEventListener('touchstart', () => {
+            console.log('UI: Toggling sidebar on touch');
+            sidebar.classList.toggle('hidden');
+        }, { passive: true });
     }
 
     // Handle responsive behavior

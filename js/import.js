@@ -10,7 +10,17 @@ const StudentManager = {
     students: [],
     
     setStudents(newStudents) {
-        this.students = newStudents;
+        // Check for duplicates before setting students
+        const uniqueStudents = [];
+        const seen = new Set();
+        for (const student of newStudents) {
+            const key = `${student['Nombre Completo']}-${student['Curso'] || student['Grado']}`;
+            if (!seen.has(key)) {
+                uniqueStudents.push(student);
+                seen.add(key);
+            }
+        }
+        this.students = uniqueStudents;
         // Disparar evento cuando se actualizan los estudiantes
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent(STUDENTS_IMPORTED_EVENT, {
@@ -48,6 +58,18 @@ export function getImportedStudents() {
     return StudentManager.getStudents();
 }
 
+function renderStudentTable(studentTable) {
+    if (!studentTable) return;
+    studentTable.innerHTML = '';
+    StudentManager.getStudents().forEach(student => {
+        const row = studentTable.insertRow();
+        const nameCell = row.insertCell();
+        const courseCell = row.insertCell();
+        nameCell.textContent = student['Nombre Completo'];
+        courseCell.textContent = student['Curso'] || student['Grado'];
+    });
+}
+
 export async function initializeImport() {
     console.log('Import: Initializing import functionality');
     await loadSavedStudents();
@@ -59,18 +81,11 @@ export async function initializeImport() {
     // Mostrar estudiantes existentes si hay
     if (studentTable && StudentManager.students.length > 0) {
         console.log('Import: Displaying existing students in table');
-        studentTable.innerHTML = '';
-        StudentManager.forEach(student => {
-            const row = studentTable.insertRow();
-            const nameCell = row.insertCell();
-            const courseCell = row.insertCell();
-            nameCell.textContent = student['Nombre Completo'];
-            courseCell.textContent = student['Curso'] || student['Grado'];
-        });
+        renderStudentTable(studentTable);
     }
 
     if (fileUpload) {
-        fileUpload.addEventListener('change', (e) => {
+        fileUpload.addEventListener('change', async (e) => {
             console.log('Import: File selected');
             const file = e.target.files[0];
             if (file) {
@@ -79,29 +94,28 @@ export async function initializeImport() {
                     complete: async function(results) {
                         if (results.data && results.data.length > 0) {
                             if (studentTable) {
-                                studentTable.innerHTML = '';
-                                importedStudents = results.data.filter(student => 
+                                const newStudents = results.data.filter(student => 
                                     student['Nombre Completo'] && (student['Curso'] || student['Grado'])
                                 );
 
-                                // Usar el método centralizado para establecer estudiantes
-                                StudentManager.setStudents(importedStudents);
+                                // Get existing students
+                                const existingStudents = StudentManager.getStudents();
+
+                                // Combine existing and new students, avoiding duplicates
+                                const allStudents = [...existingStudents, ...newStudents];
+
+                                // Update StudentManager with all students
+                                StudentManager.setStudents(allStudents);
+                                renderStudentTable(studentTable);
                                 
-                                importedStudents.forEach(student => {
-                                    const row = studentTable.insertRow();
-                                    const nameCell = row.insertCell();
-                                    const courseCell = row.insertCell();
-                                    nameCell.textContent = student['Nombre Completo'];
-                                    courseCell.textContent = student['Curso'] || student['Grado'];
-                                });
-                                
-                                // Guardar en IndexedDB
+                                // Save to IndexedDB
                                 try {
                                     await db.clear('estudiantes');
-                                    for (const student of importedStudents) {
+                                    for (const student of StudentManager.getStudents()) {
+                                        const { id, ...studentData } = student; // Remove id if it exists
                                         await db.add('estudiantes', {
-                                            nombreCompleto: student['Nombre Completo'],
-                                            curso: student['Curso'] || student['Grado']
+                                            nombreCompleto: studentData['Nombre Completo'],
+                                            curso: studentData['Curso'] || studentData['Grado']
                                         });
                                     }
                                     console.log('Import: Students saved to IndexedDB');
@@ -109,9 +123,9 @@ export async function initializeImport() {
                                     console.error('Import: Error saving students to IndexedDB:', e);
                                 }
                                 
-                                // Disparar evento cuando se importan estudiantes
+                                // Dispatch event
                                 window.dispatchEvent(new CustomEvent(STUDENTS_IMPORTED_EVENT, {
-                                    detail: { students: importedStudents }
+                                    detail: { students: StudentManager.getStudents() }
                                 }));
                                 console.log('Import: Students imported event dispatched');
                             }
@@ -133,12 +147,20 @@ export async function initializeImport() {
                 importMessage.className = 'mt-2 text-sm text-red-500';
             }
         });
-    }        
+    }
+    
+    // Listen for student import events
+    window.addEventListener(STUDENTS_IMPORTED_EVENT, () => {
+        if (studentTable) {
+            renderStudentTable(studentTable);
+        }
+    });
 }
 
 export function renderImportSection() {
     console.log('Import: Rendering import section');
-    return `
+    
+    const section = `
         <section id="import-students" class="space-y-6">
             <div class="flex justify-between items-center">
                 <h2 class="text-2xl font-semibold text-gray-800">Importar Estudiantes</h2>
@@ -178,4 +200,12 @@ export function renderImportSection() {
             </div>
         </section>
     `;
+    
+    // Use a timeout to ensure the table is rendered after the HTML is added to the DOM
+    setTimeout(() => {
+        const studentTable = document.getElementById('student-table')?.getElementsByTagName('tbody')[0];
+        renderStudentTable(studentTable);
+    }, 0);
+
+    return section;
 }
