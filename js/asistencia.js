@@ -44,10 +44,10 @@ function getHoraActual() {
     return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 }
 
-// Función para obtener los ausentes de un curso, fecha y hora específicos
-async function getAusentes(fecha, curso, hora) {
+// Función para obtener los ausentes de un curso, fecha, hora y periodo específicos
+async function getAusentes(fecha, curso, hora, periodo) {
     try {
-        const planilla = await db.get('asistencia', `${fecha}-${curso}-${hora}`);
+        const planilla = await db.get('asistencia', `${fecha}-${curso}-${hora}-${periodo}`);
         return { 
             ausentes: planilla?.ausentes || [],
             excusasJustificadas: planilla?.excusasJustificadas || []
@@ -60,9 +60,9 @@ async function getAusentes(fecha, curso, hora) {
 }
 
 // Función para obtener la asignatura de una planilla
-async function getAsignatura(fecha, curso, hora) {
+async function getAsignatura(fecha, curso, hora, periodo) {
     try {
-        const planilla = await db.get('asistencia', `${fecha}-${curso}-${hora}`);
+        const planilla = await db.get('asistencia', `${fecha}-${curso}-${hora}-${periodo}`);
         return planilla?.asignatura || '';
     } catch (e) {
         console.error('Error getting asignatura:', e);
@@ -71,19 +71,20 @@ async function getAsignatura(fecha, curso, hora) {
 }
 
 // Función para guardar la asistencia
-async function guardarAsistencia(fecha, curso, hora, asignatura, ausentes, excusasJustificadas = []) {
+async function guardarAsistencia(fecha, curso, hora, asignatura, periodo, ausentes, excusasJustificadas = []) {
     try {
-        const id = `${fecha}-${curso}-${hora}`;
+        const id = `${fecha}-${curso}-${hora}-${periodo}`;
         await db.put('asistencia', {
             id,
             fecha,
             curso,
             hora,
             asignatura,
+            periodo,
             ausentes,
             excusasJustificadas
         });
-        console.log('Asistencia guardada:', { fecha, curso, hora, asignatura, ausentes, excusasJustificadas });
+        console.log('Asistencia guardada:', { fecha, curso, hora, asignatura, periodo, ausentes, excusasJustificadas });
         return true;
     } catch (e) {
         console.error('Error saving attendance:', e);
@@ -92,9 +93,9 @@ async function guardarAsistencia(fecha, curso, hora, asignatura, ausentes, excus
 }
 
 // Función para eliminar una planilla
-async function eliminarPlanilla(fecha, curso, hora) {
+async function eliminarPlanilla(fecha, curso, hora, periodo) {
     try {
-        const id = `${fecha}-${curso}-${hora}`;
+        const id = `${fecha}-${curso}-${hora}-${periodo}`;
         await db.delete('asistencia', id);
         return true;
     } catch (e) {
@@ -108,8 +109,8 @@ async function getPlanillas() {
     try {
         const planillas = await db.getAll('asistencia');
         return planillas.sort((a, b) => {
-            // Ordenar por fecha descendente y hora
-            return b.fecha.localeCompare(a.fecha) || a.hora.localeCompare(b.hora);
+            // Ordenar por fecha descendente, hora y periodo
+            return b.fecha.localeCompare(a.fecha) || a.hora.localeCompare(b.hora) || a.periodo.localeCompare(b.periodo);
         });
     } catch (e) {
         console.error('Error getting planillas:', e);
@@ -139,6 +140,7 @@ async function renderizarListaPlanillas() {
                         <th class="px-4 py-2 border-b bg-gray-100">Hora</th>
                         <th class="px-4 py-2 border-b bg-gray-100">Curso</th>
                         <th class="px-4 py-2 border-b bg-gray-100">Asignatura</th>
+                        <th class="px-4 py-2 border-b bg-gray-100">Periodo</th>
                         <th class="px-4 py-2 border-b bg-gray-100">Ausentes</th>
                         <th class="px-4 py-2 border-b bg-gray-100">Excusas Justificadas</th>
                         <th class="px-4 py-2 border-b bg-gray-100">Acciones</th>
@@ -151,16 +153,17 @@ async function renderizarListaPlanillas() {
                             <td class="px-4 py-2 border-b">${p.hora}</td>
                             <td class="px-4 py-2 border-b">${p.curso}</td>
                             <td class="px-4 py-2 border-b">${p.asignatura}</td>
+                             <td class="px-4 py-2 border-b">${p.periodo}</td>
                             <td class="px-4 py-2 border-b">${p.ausentes.length} estudiantes</td>
                             <td class="px-4 py-2 border-b">${p.excusasJustificadas?.length || 0} estudiantes</td>
                             <td class="px-4 py-2 border-b">
                                 <div class="flex space-x-2">
                                     <button class="text-blue-600 hover:text-blue-800"
-                                            onclick="window.editarPlanilla('${p.fecha}', '${p.curso}', '${p.hora}')">
+                                            onclick="window.editarPlanilla('${p.fecha}', '${p.curso}', '${p.hora}', '${p.periodo}')">
                                         ✏️ Editar
                                     </button>
                                     <button class="text-red-600 hover:text-red-800"
-                                            onclick="window.eliminarPlanillaConfirm('${p.fecha}', '${p.curso}', '${p.hora}')">
+                                            onclick="window.eliminarPlanillaConfirm('${p.fecha}', '${p.curso}', '${p.hora}', '${p.periodo}')">
                                         🗑️ Eliminar
                                     </button>
                                 </div>
@@ -205,7 +208,7 @@ export function renderAsistenciaSection() {
             <div id="form-planilla" class="hidden space-y-6 bg-gray-50 p-6 rounded-lg">
                 <h3 class="text-lg font-medium text-gray-900">Nueva Planilla de Asistencia</h3>
                 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <!-- Curso -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -242,6 +245,16 @@ export function renderAsistenciaSection() {
                             `).join('')}
                         </select>
                     </div>
+                     <!-- Periodo -->
+                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Periodo
+                        </label>
+                        <input type="number" 
+                               id="periodo-select" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                               value="1" min="1" max="4">
+                    </div>
                 </div>
 
                 <div id="planilla-container" class="mt-4">
@@ -276,23 +289,25 @@ export function initializeAsistencia() {
     }
     
     // Exponer funciones necesarias para los eventos onclick en la tabla
-    window.editarPlanilla = async (fecha, curso, hora) => {
+    window.editarPlanilla = async (fecha, curso, hora, periodo) => {
         const formPlanilla = document.getElementById('form-planilla');
         const listaPlanillas = document.getElementById('lista-planillas');
         const cursoSelect = document.getElementById('curso-select');
         const fechaSelect = document.getElementById('fecha-select');
         const asignaturaSelect = document.getElementById('asignatura-select');
+        const periodoSelect = document.getElementById('periodo-select');
         
-        if (formPlanilla && listaPlanillas && cursoSelect && fechaSelect) {
+        if (formPlanilla && listaPlanillas && cursoSelect && fechaSelect && periodoSelect) {
             formPlanilla.classList.remove('hidden');
             listaPlanillas.classList.add('hidden');
             
             cursoSelect.value = curso;
             fechaSelect.value = fecha;
+            periodoSelect.value = periodo;
             
             // Establecer la asignatura
             if (asignaturaSelect) {
-                const asignatura = await getAsignatura(fecha, curso, hora);
+                const asignatura = await getAsignatura(fecha, curso, hora, periodo);
                 asignaturaSelect.value = asignatura;
             }
             
@@ -300,7 +315,7 @@ export function initializeAsistencia() {
             if (planillaContainer) {
                 const estudiantes = getEstudiantesPorCurso(curso);
                 //const ausentes = await getAusentes(fecha, curso, hora);
-                const { ausentes, excusasJustificadas } = await getAusentes(fecha, curso, hora);
+                const { ausentes, excusasJustificadas } = await getAusentes(fecha, curso, hora, periodo);
                 
                 planillaContainer.innerHTML = renderizarPlanillaConEstudiantes(
                     estudiantes, 
@@ -378,9 +393,9 @@ export function initializeAsistencia() {
         });
     }
 
-    window.eliminarPlanillaConfirm = async (fecha, curso, hora) => {
+    window.eliminarPlanillaConfirm = async (fecha, curso, hora, periodo) => {
         if (confirm('¿Está seguro de que desea eliminar esta planilla?')) {
-            if (await eliminarPlanilla(fecha, curso, hora)) {
+            if (await eliminarPlanilla(fecha, curso, hora, periodo)) {
                 const listaPlanillas = document.getElementById('lista-planillas');
                 if (listaPlanillas) {
                     listaPlanillas.innerHTML = await renderizarListaPlanillas();
@@ -404,11 +419,13 @@ export function initializeAsistencia() {
                 const cursoSelect = document.getElementById('curso-select');
                 const fechaSelect = document.getElementById('fecha-select');
                 const asignaturaSelect = document.getElementById('asignatura-select');
+                const periodoSelect = document.getElementById('periodo-select');
                 
-                if (cursoSelect && fechaSelect && asignaturaSelect) {
+                if (cursoSelect && fechaSelect && asignaturaSelect && periodoSelect) {
                     cursoSelect.value = '';
                     fechaSelect.value = new Date().toISOString().split('T')[0];
                     asignaturaSelect.value = '';
+                    periodoSelect.value = '1';
                 }
                 
                 const planillaContainer = document.getElementById('planilla-container');
@@ -485,9 +502,10 @@ export function initializeAsistencia() {
             const curso = document.getElementById('curso-select')?.value;
             const fecha = document.getElementById('fecha-select')?.value;
             const asignatura = document.getElementById('asignatura-select')?.value;
+            const periodo = document.getElementById('periodo-select')?.value;
             const formPlanilla = document.getElementById('form-planilla');
             
-            if (!curso || !fecha || !asignatura) {
+            if (!curso || !fecha || !asignatura || !periodo) {
                 alert('Por favor complete todos los campos');
                 return;
             }
@@ -505,7 +523,7 @@ export function initializeAsistencia() {
             // Usar la hora existente si está editando, o crear una nueva
             const hora = formPlanilla?.dataset.editandoHora || getHoraActual();
             
-            if (await guardarAsistencia(fecha, curso, hora, asignatura, ausentes, excusasJustificadas)) {
+            if (await guardarAsistencia(fecha, curso, hora, asignatura, periodo, ausentes, excusasJustificadas)) {
                 // Volver a la lista
                 if (formPlanilla) {
                     formPlanilla.classList.add('hidden');
@@ -521,14 +539,16 @@ export function initializeAsistencia() {
 
     const cursoSelect = document.getElementById('curso-select');
     const fechaSelect = document.getElementById('fecha-select');
+    const periodoSelect = document.getElementById('periodo-select');
     
     function actualizarPlanilla() {
         const curso = cursoSelect?.value;
         const fecha = fechaSelect?.value;
+        const periodo = periodoSelect?.value;
         const formPlanilla = document.getElementById('form-planilla');
         const hora = formPlanilla?.dataset.editandoHora || getHoraActual();
         
-        if (curso && fecha) {
+        if (curso && fecha && periodo) {
             const planillaContainer = document.getElementById('planilla-container');
             if (planillaContainer) {
                 const estudiantes = getEstudiantesPorCurso(curso);
@@ -537,9 +557,10 @@ export function initializeAsistencia() {
         }
     }
 
-    if (cursoSelect && fechaSelect) {
+    if (cursoSelect && fechaSelect && periodoSelect) {
         cursoSelect.addEventListener('change', actualizarPlanilla);
         fechaSelect.addEventListener('change', actualizarPlanilla);
+        periodoSelect.addEventListener('change', actualizarPlanilla);
     }
 
     // Escuchar el evento de importación de estudiantes

@@ -1,5 +1,5 @@
 const DB_NAME = 'eduflowDB';
-const DB_VERSION = 2; // Incrementing version for schema update
+const DB_VERSION = 3; // Incrementing version for schema update
 
 class Database {
     constructor() {
@@ -52,18 +52,21 @@ class Database {
                 }
 
                 if (!db.objectStoreNames.contains('asistencia')) {
-                    const asistenciaStore = db.createObjectStore('asistencia', { keyPath: 'id' });
+                    const asistenciaStore = db.createObjectStore('asistencia', { keyPath: ['grado', 'asignatura', 'periodo'] });
                     asistenciaStore.createIndex('fecha', 'fecha', { unique: false });
                     asistenciaStore.createIndex('grado', 'grado', { unique: false });
+                    asistenciaStore.createIndex('asignatura', 'asignatura', { unique: false });
+                    asistenciaStore.createIndex('periodo', 'periodo', { unique: false });
                 }
 
                 // Updated schema for planillas de valoración
                 if (!db.objectStoreNames.contains('planillasValoracion')) {
                     const planillasStore = db.createObjectStore('planillasValoracion', { 
-                        keyPath: ['curso', 'asignatura']
+                        keyPath: ['curso', 'asignatura', 'periodo']
                     });
                     planillasStore.createIndex('curso', 'curso', { unique: false });
                     planillasStore.createIndex('asignatura', 'asignatura', { unique: false });
+                    planillasStore.createIndex('periodo', 'periodo', { unique: false });
                 }
 
                 // Delete old valoracion store if exists

@@ -4,9 +4,9 @@ console.log('Encuadres: Module loaded');
 
 let encuadres = [];
 
-// Generate unique ID - usando la misma implementación que en planeacion.js
-function generateUniqueId() {
-    return Date.now() + Math.floor(Math.random() * 1000);
+// Generate unique ID - using the same implementation as in planeacion.js
+function generateUniqueId(planDeAreaId, periodo) {
+    return `${planDeAreaId}-${periodo}`;
 }
 
 // Load initial data from IndexedDB
@@ -190,6 +190,9 @@ async function renderEncuadres() {
                                         <button class="text-blue-600 hover:text-blue-800 mr-2 edit-encuadre" data-id="${encuadre.id}">
                                             Editar
                                         </button>
+                                        <button class="text-green-600 hover:text-green-800 mr-2 view-encuadre" data-id="${encuadre.id}">
+                                            Ver
+                                        </button>
                                         <button class="text-red-600 hover:text-red-800 delete-encuadre" data-id="${encuadre.id}">
                                             Eliminar
                                         </button>
@@ -201,24 +204,31 @@ async function renderEncuadres() {
                 </table>
             </div>
         </div>
+    `;
+}
 
-        <!-- Modal para selección de plan de área -->
-        <div id="modal-seleccion-plan" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center">
-            <div class="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full">
-                <h3 class="text-lg font-bold mb-4">Seleccionar Plan de Área</h3>
-                <div class="space-y-4">
-                    <select id="select-plan-area" class="w-full p-2 border rounded">
-                        <option value="">Seleccione un plan</option>
-                    </select>
-                    <div class="flex justify-end space-x-2">
-                        <button id="btn-cancelar-seleccion" class="px-4 py-2 text-gray-600 hover:text-gray-800">
-                            Cancelar
-                        </button>
-                        <button id="btn-confirmar-seleccion" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                            Confirmar
-                        </button>
-                    </div>
-                </div>
+// Render encuadre details
+function renderEncuadreDetails(encuadre) {
+    return `
+        <div class="space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    Detalles del Encuadre
+                </h2>
+                <button id="btn-volver" class="text-gray-600 hover:text-gray-800">
+                    Volver
+                </button>
+            </div>
+            <div class="space-y-4">
+                <p><span class="font-semibold">Plan de Área ID:</span> ${encuadre.planDeAreaId}</p>
+                <p><span class="font-semibold">Periodo:</span> ${encuadre.periodo}</p>
+                <p><span class="font-semibold">Competencias del SABER:</span> ${encuadre.competenciasSaber}</p>
+                <p><span class="font-semibold">Competencias del SABER HACER:</span> ${encuadre.competenciasSaberHacer}</p>
+                <p><span class="font-semibold">Competencias del SABER SER:</span> ${encuadre.competenciasSaberSer}</p>
+                <p><span class="font-semibold">Criterios de Evaluación:</span> ${encuadre.criteriosEvaluacion}</p>
+                <p><span class="font-semibold">Resultados de Aprendizaje:</span> ${encuadre.resultadosAprendizaje}</p>
+                <p><span class="font-semibold">Evidencias de Aprendizaje:</span> ${encuadre.evidenciasAprendizaje}</p>
+                <p><span class="font-semibold">Posibles Fechas:</span> ${encuadre.fechas}</p>
             </div>
         </div>
     `;
@@ -285,68 +295,31 @@ function initializeEventListeners() {
                     throw new Error('No valid encuadres found in import file');
                 }
 
-                // Cargar planes de área para el modal
-                const planesDeArea = await loadPlanesDeArea();
-                const selectPlan = content.querySelector('#select-plan-area');
-                selectPlan.innerHTML = `
-                    <option value="">Seleccione un plan</option>
-                    ${planesDeArea.map(plan => `
-                        <option value="${plan.id}">${plan.asignatura} - ${plan.grado}</option>
-                    `).join('')}
-                `;
+                
+                // Process and save imported encuadres
+                for (const encuadre of validEncuadres) {
+                    // Assuming the planDeAreaId is provided in the encuadre data
+                    const newEncuadre = {
+                        id: generateUniqueId(encuadre.planDeAreaId, encuadre.periodo),
+                        planDeAreaId: encuadre.planDeAreaId,
+                        periodo: typeof encuadre.periodo === 'number' ? encuadre.periodo : 1,
+                        competenciasSaber: encuadre.competenciasSaber,
+                        competenciasSaberHacer: encuadre.competenciasSaberHacer,
+                        competenciasSaberSer: encuadre.competenciasSaberSer,
+                        criteriosEvaluacion: encuadre.criteriosEvaluacion,
+                        resultadosAprendizaje: encuadre.resultadosAprendizaje,
+                        evidenciasAprendizaje: encuadre.evidenciasAprendizaje,
+                        fechas: encuadre.fechas
+                    };
+                    
+                    console.log('Importing encuadre:', newEncuadre);
+                    await db.add('encuadres', newEncuadre);
+                    encuadres.push(newEncuadre);
+                }
+                
+                updateEncuadresContent();
+                alert(`Se importaron ${validEncuadres.length} encuadres exitosamente`);
 
-                // Mostrar modal
-                const modal = content.querySelector('#modal-seleccion-plan');
-                modal.classList.remove('hidden');
-
-                // Manejar selección
-                const btnConfirmar = content.querySelector('#btn-confirmar-seleccion');
-                const btnCancelar = content.querySelector('#btn-cancelar-seleccion');
-
-                btnConfirmar.onclick = async () => {
-                    const planDeAreaId = parseInt(selectPlan.value);
-                    if (!planDeAreaId) {
-                        alert('Por favor seleccione un plan de área');
-                        return;
-                    }
-
-                    try {
-                        // Procesar y guardar los encuadres importados
-                        for (const encuadre of validEncuadres) {
-                            const newEncuadre = {
-                                id: Date.now() + Math.floor(Math.random() * 1000), // Usando la misma implementación que planeacion.js
-                                planDeAreaId: planDeAreaId,
-                                periodo: typeof encuadre.periodo === 'number' ? encuadre.periodo : 1,
-                                competenciasSaber: encuadre.competenciasSaber,
-                                competenciasSaberHacer: encuadre.competenciasSaberHacer,
-                                competenciasSaberSer: encuadre.competenciasSaberSer,
-                                criteriosEvaluacion: encuadre.criteriosEvaluacion,
-                                resultadosAprendizaje: encuadre.resultadosAprendizaje,
-                                evidenciasAprendizaje: encuadre.evidenciasAprendizaje,
-                                fechas: encuadre.fechas
-                            };
-
-                            console.log('Importing encuadre:', newEncuadre); // Debug log
-                            
-                            // Agregar el nuevo encuadre
-                            await db.add('encuadres', newEncuadre);
-                            encuadres.push(newEncuadre);
-                        }
-                        
-                        // Cerrar modal y actualizar vista
-                        modal.classList.add('hidden');
-                        updateEncuadresContent();
-                        
-                        alert(`Se importaron ${validEncuadres.length} encuadres exitosamente`);
-                    } catch (error) {
-                        console.error('Error saving encuadres:', error);
-                        alert('Error al guardar los encuadres importados: ' + error.message);
-                    }
-                };
-
-                btnCancelar.onclick = () => {
-                    modal.classList.add('hidden');
-                };
 
             } catch (e) {
                 console.error('Error importing data:', e);
@@ -365,6 +338,23 @@ function initializeEventListeners() {
                 if (encuadre) {
                     content.innerHTML = await renderEncuadreForm(encuadre);
                     initializeFormEventListeners(encuadre);
+                }
+            } catch (e) {
+                console.error('Error loading encuadre:', e);
+                alert('Error al cargar el encuadre');
+            }
+        });
+    });
+
+    // View buttons
+    content.querySelectorAll('.view-encuadre').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const encuadreId = parseInt(btn.dataset.id);
+            try {
+                const encuadre = await db.get('encuadres', encuadreId);
+                if (encuadre) {
+                    content.innerHTML = renderEncuadreDetails(encuadre);
+                    content.querySelector('#btn-volver')?.addEventListener('click', updateEncuadresContent);
                 }
             } catch (e) {
                 console.error('Error loading encuadre:', e);
@@ -403,8 +393,8 @@ function initializeFormEventListeners(encuadre = null) {
         const formData = new FormData(form);
         
         const encuadreData = {
-            id: encuadre?.id || (Date.now() + Math.floor(Math.random() * 1000)), // Usando la misma implementación que planeacion.js
-            planDeAreaId: parseInt(formData.get('planDeAreaId')),
+            id: encuadre?.id || generateUniqueId(formData.get('planDeAreaId'), formData.get('periodo')),
+            planDeAreaId: formData.get('planDeAreaId'),
             periodo: parseInt(formData.get('periodo')),
             competenciasSaber: formData.get('competenciasSaber'),
             competenciasSaberHacer: formData.get('competenciasSaberHacer'),

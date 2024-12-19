@@ -4,9 +4,9 @@ console.log('PlanesDeArea: Module loaded');
 
 let planesDeArea = [];
 
-// Generate unique ID - usando la misma implementación que en encuadres.js
-function generateUniqueId() {
-    return Date.now() + Math.floor(Math.random() * 1000);
+// Generate unique ID - using asignatura and grado
+function generateUniqueId(asignatura, grado) {
+    return `${asignatura}-${grado}`;
 }
 
 // Load initial data from IndexedDB
@@ -76,6 +76,9 @@ function renderPlanesDeArea() {
                                     <button class="text-blue-600 hover:text-blue-800 mr-2 edit-plan" data-id="${plan.id}">
                                         Editar
                                     </button>
+                                    <button class="text-green-600 hover:text-green-800 mr-2 view-plan" data-id="${plan.id}">
+                                        Ver
+                                    </button>
                                     <button class="text-red-600 hover:text-red-800 delete-plan" data-id="${plan.id}">
                                         Eliminar
                                     </button>
@@ -84,6 +87,66 @@ function renderPlanesDeArea() {
                         `).join('')}
                     </tbody>
                 </table>
+            </div>
+        </div>
+    `;
+}
+
+// Render plan details
+function renderPlanDetails(plan) {
+    console.log('PlanesDeArea: Rendering plan details', plan);
+    return `
+        <div class="space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    Detalles del Plan de Área
+                </h2>
+                <button id="btn-volver" class="text-gray-600 hover:text-gray-800">
+                    Volver
+                </button>
+            </div>
+            <div class="space-y-4">
+                <p><span class="font-semibold">Asignatura:</span> ${plan.asignatura}</p>
+                <p><span class="font-semibold">Grado:</span> ${plan.grado}</p>
+                <p><span class="font-semibold">Periodos:</span> ${plan.periodos}</p>
+                ${Object.keys(plan.contenido).map(periodoKey => `
+                    <div class="border-t border-gray-200 pt-4">
+                        <h3 class="text-lg font-medium">Periodo ${periodoKey.replace('periodo', '')}</h3>
+                        <div class="space-y-2">
+                            <p><span class="font-semibold">SABER:</span> ${plan.contenido[periodoKey].competencias?.saber || 'N/A'}</p>
+                            <p><span class="font-semibold">SABER HACER:</span> ${plan.contenido[periodoKey].competencias?.saberHacer || 'N/A'}</p>
+                            <p><span class="font-semibold">SABER SER:</span> ${plan.contenido[periodoKey].competencias?.saberSer || 'N/A'}</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full border border-gray-300">
+                                <thead>
+                                    <tr class="bg-gray-50">
+                                        <th class="px-4 py-2 border">COMPETENCIA DE CONTENIDO</th>
+                                        <th class="px-4 py-2 border">ESTANDAR</th>
+                                        <th class="px-4 py-2 border">COMPETENCIA DE PROCESO</th>
+                                        <th class="px-4 py-2 border">DBA/APRENDIZAJES</th>
+                                        <th class="px-4 py-2 border">ESTRATEGIAS DIDACTICO PEDAGOGICAS</th>
+                                        <th class="px-4 py-2 border">CRITERIOS DE EVALUACION</th>
+                                        <th class="px-4 py-2 border">EVIDENCIAS DE APRENDIZAJE</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${plan.contenido[periodoKey].matriz?.map(row => `
+                                        <tr>
+                                            <td class="border p-2">${row.competenciaContenido}</td>
+                                            <td class="border p-2">${row.estandar}</td>
+                                            <td class="border p-2">${row.competenciaProceso}</td>
+                                            <td class="border p-2">${row.dbaAprendizajes}</td>
+                                            <td class="border p-2">${row.estrategias}</td>
+                                            <td class="border p-2">${row.criteriosEvaluacion}</td>
+                                            <td class="border p-2">${row.evidenciasAprendizaje}</td>
+                                        </tr>
+                                    `).join('') || `<tr><td colspan="7" class="text-center p-2">No hay datos</td></tr>`}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `).join('')}
             </div>
         </div>
     `;
@@ -147,7 +210,7 @@ function initializeEventListeners() {
                     // Generar nuevo ID antes de validar y guardar
                     const planToSave = {
                         ...plan,
-                        id: generateUniqueId()
+                        id: generateUniqueId(plan.asignatura, plan.grado)
                     };
                     await db.add('planesDeArea', planToSave);
                 }
@@ -166,7 +229,7 @@ function initializeEventListeners() {
     // Edit buttons
     content.querySelectorAll('.edit-plan').forEach(btn => {
         btn.addEventListener('click', async () => {
-            const planId = parseInt(btn.dataset.id);
+            const planId = btn.dataset.id;
             try {
                 const plan = await db.get('planesDeArea', planId);
                 if (plan) {
@@ -180,10 +243,27 @@ function initializeEventListeners() {
         });
     });
 
+    // View buttons
+    content.querySelectorAll('.view-plan').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const planId = btn.dataset.id;
+            try {
+                const plan = await db.get('planesDeArea', planId);
+                if (plan) {
+                    content.innerHTML = renderPlanDetails(plan);
+                    content.querySelector('#btn-volver')?.addEventListener('click', updatePlanesDeAreaContent);
+                }
+            } catch (e) {
+                console.error('Error loading plan:', e);
+                alert('Error al cargar el plan');
+            }
+        });
+    });
+
     // Delete buttons
     content.querySelectorAll('.delete-plan').forEach(btn => {
         btn.addEventListener('click', async () => {
-            const planId = parseInt(btn.dataset.id);
+            const planId = btn.dataset.id;
             if (confirm('¿Está seguro de que desea eliminar este plan de área?')) {
                 try {
                     await db.delete('planesDeArea', planId);
@@ -405,7 +485,7 @@ function initializeFormEventListeners(plan = null) {
         const formData = new FormData(form);
         
         const planData = {
-            id: plan?.id || generateUniqueId(), // Usar generateUniqueId para nuevos planes
+            id: plan?.id || generateUniqueId(formData.get('asignatura'), formData.get('grado')),
             asignatura: formData.get('asignatura'),
             grado: formData.get('grado'),
             periodos: parseInt(formData.get('periodos')),

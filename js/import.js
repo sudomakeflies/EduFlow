@@ -185,10 +185,10 @@ export function renderImportSection() {
                     <table id="student-table" class="min-w-full bg-white border border-gray-300">
                         <thead>
                             <tr>
-                                <th class="px-6 py-3 border-b border-gray-300 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase">
-                                    Nombre Completo
+                                <th class="px-6 py-3 border-b border-gray-300 bg-gray-100 text-left">
+                                    Nombre
                                 </th>
-                                <th class="px-6 py-3 border-b border-gray-300 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase">
+                                <th class="px-6 py-3 border-b border-gray-300 bg-gray-100 text-left">
                                     Curso
                                 </th>
                             </tr>

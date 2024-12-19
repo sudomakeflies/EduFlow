@@ -5,7 +5,7 @@
     "asignatura": "Matemáticas",
     "periodosClase": 2,
     "objetivo": "Que los estudiantes de grado 9 comprendan cómo resolver sistemas de ecuaciones lineales con dos incógnitas utilizando distintos métodos (sustitución, igualación, y gráficamente), adaptando las estrategias a los niveles de desempeño de los estudiantes.",
-    "encuadreId": null,
+    "encuadreId": "Mate-9-1",
     "momentos": {
         "inicio": "Actividad lúdica: 'El misterio de los precios'. Los estudiantes trabajan en pares para descubrir el precio de manzanas y naranjas usando ecuaciones sencillas.",
         "exploracion": "Introducción al concepto de sistemas de ecuaciones. Explicación breve y resolución de un sistema sencillo por el método de igualación en el tablero.",

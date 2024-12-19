@@ -4,6 +4,7 @@ import { initializeAsistencia, renderAsistenciaSection } from './asistencia.js';
 import { initializeValoracion, renderValoracionSection } from './valoracion.js';
 import { updatePlanesDeAreaContent } from './planesdearea.js';
 import { updateEncuadresContent } from './encuadres.js';
+import { renderReportesSection, initializeReportes } from './reportes.js';
 
 console.log('UI: Loaded modules:', {
     planeacionManager,
@@ -108,13 +109,9 @@ export async function updateContent(section) {
                 }
                 break;
             case 'reportes':
-                    console.log('UI: Rendering configuracion section');
-                    content.innerHTML = `
-                        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Reportes</h2>
-                        <p class="text-gray-600">
-                            Modulo reportes en construcción.
-                        </p>
-                    `;
+                    console.log('UI: Rendering reportes section');
+                    content.innerHTML = renderReportesSection();
+                    initializeReportes();
                     break;
             case 'configuracion':
                 console.log('UI: Rendering configuracion section');

@@ -6,6 +6,7 @@ const ASSETS = [
     '/style.css',
     '/tailwind.css',
     '/manifest.json',
+    '/key.txt',
     '/icons/icon-192x192.png',
     '/icons/icon-512x512.png',
     '/js/asistencia.js',
@@ -53,6 +54,11 @@ self.addEventListener('activate', event => {
 // Fetch event - Serve from cache with SPA fallback for intern navigation or serve statics files directly from cache if founded else return a default response
 self.addEventListener('fetch', event => {
     const request = event.request;
+
+    // Skip caching for the API endpoint
+    if (request.url.startsWith('https://api.vectorshift.ai/api/chatbots/run')) {
+        return fetch(request);
+    }
 
     // Manejar solicitudes de navegación
     if (request.mode === 'navigate') {

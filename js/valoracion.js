@@ -73,9 +73,9 @@ async function exportarTodasPlanillasJSON() {
 }
 
 // Función para exportar planilla a JSON
-async function exportarPlanillaJSON(curso, asignatura) {
+async function exportarPlanillaJSON(curso, asignatura, periodo) {
     try {
-        const planilla = await db.get('planillasValoracion', [curso, asignatura]);
+        const planilla = await db.get('planillasValoracion', [curso, asignatura, periodo]);
         if (!planilla) {
             throw new Error('Planilla no encontrada');
         }
@@ -85,7 +85,7 @@ async function exportarPlanillaJSON(curso, asignatura) {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `planilla_${curso}_${asignatura}.json`;
+        link.download = `planilla_${curso}_${asignatura}_${periodo}.json`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -97,11 +97,12 @@ async function exportarPlanillaJSON(curso, asignatura) {
 }
 
 // Función para guardar una planilla
-async function guardarPlanilla(curso, asignatura, criterios, estudiantes) {
+async function guardarPlanilla(curso, asignatura, periodo, criterios, estudiantes) {
     try {
         const planilla = {
             curso,
             asignatura,
+            periodo,
             criterios,
             estudiantes: {}
         };
@@ -124,9 +125,9 @@ async function guardarPlanilla(curso, asignatura, criterios, estudiantes) {
 }
 
 // Función para eliminar una planilla
-async function eliminarPlanilla(curso, asignatura) {
+async function eliminarPlanilla(curso, asignatura, periodo) {
     try {
-        await db.delete('planillasValoracion', [curso, asignatura]);
+        await db.delete('planillasValoracion', [curso, asignatura, periodo]);
         return true;
     } catch (e) {
         console.error('Error al eliminar planilla:', e);
@@ -168,6 +169,7 @@ async function renderizarListaPlanillas() {
                     <tr>
                         <th class="px-4 py-2 border-b bg-gray-100">Curso</th>
                         <th class="px-4 py-2 border-b bg-gray-100">Asignatura</th>
+                        <th class="px-4 py-2 border-b bg-gray-100">Periodo</th>
                         <th class="px-4 py-2 border-b bg-gray-100">Criterios</th>
                         <th class="px-4 py-2 border-b bg-gray-100">Estudiantes</th>
                         <th class="px-4 py-2 border-b bg-gray-100">Acciones</th>
@@ -178,20 +180,21 @@ async function renderizarListaPlanillas() {
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-2 border-b">${p.curso}</td>
                             <td class="px-4 py-2 border-b">${p.asignatura}</td>
+                            <td class="px-4 py-2 border-b">${p.periodo}</td>
                             <td class="px-4 py-2 border-b">${p.criterios.join(', ')}</td>
                             <td class="px-4 py-2 border-b">${Object.keys(p.estudiantes).length} estudiantes</td>
                             <td class="px-4 py-2 border-b">
                                 <div class="flex space-x-2">
                                     <button class="text-blue-600 hover:text-blue-800"
-                                            onclick="window.editarPlanillaValoracion('${p.curso}', '${p.asignatura}')">
+                                            onclick="window.editarPlanillaValoracion('${p.curso}', '${p.asignatura}', '${p.periodo}')">
                                         ✏️ Editar
                                     </button>
                                     <button class="text-green-600 hover:text-green-800"
-                                            onclick="window.exportarPlanillaValoracion('${p.curso}', '${p.asignatura}')">
+                                            onclick="window.exportarPlanillaValoracion('${p.curso}', '${p.asignatura}', '${p.periodo}')">
                                         📥 Exportar
                                     </button>
                                     <button class="text-red-600 hover:text-red-800"
-                                            onclick="window.eliminarPlanillaValoracionConfirm('${p.curso}', '${p.asignatura}')">
+                                            onclick="window.eliminarPlanillaValoracionConfirm('${p.curso}', '${p.asignatura}', '${p.periodo}')">
                                         🗑️ Eliminar
                                     </button>
                                 </div>
@@ -221,6 +224,9 @@ export async function renderValoracionSection() {
                     <button id="exportar-todas-planillas" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
                         📤
                     </button>
+                    <button id="importar-planillas-valoracion" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">
+                        📥
+                    </button>
                     <button id="nueva-planilla-valoracion" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                         ➕
                     </button>
@@ -234,7 +240,7 @@ export async function renderValoracionSection() {
             <div id="form-planilla-valoracion" class="hidden space-y-6 bg-gray-50 p-6 rounded-lg">
                 <h3 class="text-lg font-medium text-gray-900">Nueva Planilla de Valoración</h3>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <!-- Curso -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -259,6 +265,16 @@ export async function renderValoracionSection() {
                                 <option value="${asignatura}">${asignatura}</option>
                             `).join('')}
                         </select>
+                    </div>
+                     <!-- Periodo -->
+                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Periodo
+                        </label>
+                        <input type="number" 
+                               id="periodo-select-valoracion" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                               value="1" min="1" max="4">
                     </div>
                 </div>
 
@@ -316,22 +332,24 @@ export async function initializeValoracion() {
     }
     
     // Exponer funciones necesarias para los eventos onclick en la tabla
-    window.editarPlanillaValoracion = async (curso, asignatura) => {
-        console.log('Editando planilla:', curso, asignatura);
+    window.editarPlanillaValoracion = async (curso, asignatura, periodo) => {
+        console.log('Editando planilla:', curso, asignatura, periodo);
         const formPlanilla = document.getElementById('form-planilla-valoracion');
         const listaPlanillas = document.getElementById('lista-planillas-valoracion');
         const cursoSelect = document.getElementById('curso-select-valoracion');
         const asignaturaSelect = document.getElementById('asignatura-select-valoracion');
+        const periodoSelect = document.getElementById('periodo-select-valoracion');
         
-        if (formPlanilla && listaPlanillas && cursoSelect && asignaturaSelect) {
+        if (formPlanilla && listaPlanillas && cursoSelect && asignaturaSelect && periodoSelect) {
             formPlanilla.classList.remove('hidden');
             listaPlanillas.classList.add('hidden');
             
             cursoSelect.value = curso;
             asignaturaSelect.value = asignatura;
+            periodoSelect.value = periodo;
             
             // Cargar criterios existentes
-            const planilla = await db.get('planillasValoracion', [curso, asignatura]);
+            const planilla = await db.get('planillasValoracion', [curso, asignatura, periodo]);
             const criterios = planilla.criterios;
             const criteriosContainer = document.getElementById('criterios-container');
             criteriosContainer.innerHTML = criterios.map(criterio => `
@@ -362,15 +380,15 @@ export async function initializeValoracion() {
         }
     };
 
-    window.exportarPlanillaValoracion = async (curso, asignatura) => {
-        console.log('Exportando planilla:', curso, asignatura);
-        await exportarPlanillaJSON(curso, asignatura);
+    window.exportarPlanillaValoracion = async (curso, asignatura, periodo) => {
+        console.log('Exportando planilla:', curso, asignatura, periodo);
+        await exportarPlanillaJSON(curso, asignatura, periodo);
     };
 
-    window.eliminarPlanillaValoracionConfirm = async (curso, asignatura) => {
-        console.log('Confirmando eliminación de planilla:', curso, asignatura);
+    window.eliminarPlanillaValoracionConfirm = async (curso, asignatura, periodo) => {
+        console.log('Confirmando eliminación de planilla:', curso, asignatura, periodo);
         if (confirm('¿Está seguro de que desea eliminar esta planilla?')) {
-            if (await eliminarPlanilla(curso, asignatura)) {
+            if (await eliminarPlanilla(curso, asignatura, periodo)) {
                 const listaPlanillas = document.getElementById('lista-planillas-valoracion');
                 if (listaPlanillas) {
                     listaPlanillas.innerHTML = await renderizarListaPlanillas();
@@ -397,10 +415,46 @@ export async function initializeValoracion() {
     };
 
     // Event Listeners
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', async (e) => {
         if (e.target.id === 'exportar-todas-planillas') {
             console.log('Exportando todas las planillas');
             exportarTodasPlanillasJSON();
+        }
+
+        if (e.target.id === 'importar-planillas-valoracion') {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                try {
+                    const file = e.target.files[0];
+                    const text = await file.text();
+                    let data = JSON.parse(text);
+                    
+                    if (!Array.isArray(data)) {
+                        data = [data];
+                    }
+
+                    await db.clear('planillasValoracion');
+                    for (const planilla of data) {
+                        if (!planilla.curso || !planilla.asignatura || !planilla.periodo) {
+                            console.error('Invalid planilla format:', planilla);
+                            alert('Error: Invalid planilla format. Ensure curso, asignatura, and periodo are defined.');
+                            return;
+                        }
+                        await db.add('planillasValoracion', planilla);
+                    }
+                    
+                    const listaPlanillas = document.getElementById('lista-planillas-valoracion');
+                    if (listaPlanillas) {
+                        listaPlanillas.innerHTML = await renderizarListaPlanillas();
+                    }
+                } catch (e) {
+                    console.error('Error importing data:', e);
+                    alert('Error al importar los datos');
+                }
+            };
+            input.click();
         }
 
         if (e.target.id === 'nueva-planilla-valoracion') {
@@ -415,11 +469,13 @@ export async function initializeValoracion() {
                 // Resetear el formulario
                 const cursoSelect = document.getElementById('curso-select-valoracion');
                 const asignaturaSelect = document.getElementById('asignatura-select-valoracion');
+                const periodoSelect = document.getElementById('periodo-select-valoracion');
                 const criteriosContainer = document.getElementById('criterios-container');
                 
-                if (cursoSelect && asignaturaSelect && criteriosContainer) {
+                if (cursoSelect && asignaturaSelect && criteriosContainer && periodoSelect) {
                     cursoSelect.value = '';
                     asignaturaSelect.value = '';
+                    periodoSelect.value = '1';
                     criteriosContainer.innerHTML = `
                         <div class="flex items-center space-x-2">
                             <input type="text" 
@@ -461,8 +517,9 @@ export async function initializeValoracion() {
             console.log('Guardando planilla');
             const curso = document.getElementById('curso-select-valoracion')?.value;
             const asignatura = document.getElementById('asignatura-select-valoracion')?.value;
+            const periodo = document.getElementById('periodo-select-valoracion')?.value;
             
-            if (!curso || !asignatura) {
+            if (!curso || !asignatura || !periodo) {
                 alert('Por favor complete todos los campos');
                 return;
             }
@@ -503,7 +560,7 @@ export async function initializeValoracion() {
 
             if (!notasValidas) return;
 
-            guardarPlanilla(curso, asignatura, criteriosInputs, estudiantes).then(async success => {
+            guardarPlanilla(curso, asignatura, periodo, criteriosInputs, estudiantes).then(async success => {
                 if (success) {
                     const formPlanilla = document.getElementById('form-planilla-valoracion');
                     const listaPlanillas = document.getElementById('lista-planillas-valoracion');
@@ -524,8 +581,9 @@ export async function initializeValoracion() {
         console.log('Actualizando tabla de valoración');
         const curso = document.getElementById('curso-select-valoracion')?.value;
         const asignatura = document.getElementById('asignatura-select-valoracion')?.value;
+        const periodo = document.getElementById('periodo-select-valoracion')?.value;
         
-        if (curso && asignatura) {
+        if (curso && asignatura && periodo) {
             const planillaContainer = document.getElementById('planilla-valoracion-container');
             if (planillaContainer) {
                 const estudiantes = getEstudiantesPorCurso(curso);
@@ -535,7 +593,7 @@ export async function initializeValoracion() {
                 
                 let planillaExistente;
                 try {
-                    planillaExistente = await db.get('planillasValoracion', [curso, asignatura]);
+                    planillaExistente = await db.get('planillasValoracion', [curso, asignatura, periodo]);
                 } catch (e) {
                     console.log('No existe planilla previa');
                 }
@@ -594,10 +652,12 @@ export async function initializeValoracion() {
 
     const cursoSelect = document.getElementById('curso-select-valoracion');
     const asignaturaSelect = document.getElementById('asignatura-select-valoracion');
+    const periodoSelect = document.getElementById('periodo-select-valoracion');
     
-    if (cursoSelect && asignaturaSelect) {
+    if (cursoSelect && asignaturaSelect && periodoSelect) {
         cursoSelect.addEventListener('change', actualizarTablaValoracion);
         asignaturaSelect.addEventListener('change', actualizarTablaValoracion);
+        periodoSelect.addEventListener('change', actualizarTablaValoracion);
     } else {
         console.error('No se encontraron los selectores de curso y asignatura');
     }
