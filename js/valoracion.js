@@ -325,7 +325,6 @@ export async function initializeValoracion() {
     // Actualizar la lista de planillas inmediatamente
     const listaPlanillas = document.getElementById('lista-planillas-valoracion');
     if (listaPlanillas) {
-        console.log('Actualizando lista de planillas');
         listaPlanillas.innerHTML = await renderizarListaPlanillas();
     } else {
         console.error('No se encontró el elemento lista-planillas-valoracion');

@@ -1,5 +1,5 @@
 const DB_NAME = 'eduflowDB';
-const DB_VERSION = 3; // Incrementing version for schema update
+const DB_VERSION = 1; // Incrementing version for schema update
 
 class Database {
     constructor() {
@@ -52,9 +52,10 @@ class Database {
                 }
 
                 if (!db.objectStoreNames.contains('asistencia')) {
-                    const asistenciaStore = db.createObjectStore('asistencia', { keyPath: ['grado', 'asignatura', 'periodo'] });
+                    const asistenciaStore = db.createObjectStore('asistencia', { keyPath: 'id' });
                     asistenciaStore.createIndex('fecha', 'fecha', { unique: false });
-                    asistenciaStore.createIndex('grado', 'grado', { unique: false });
+                    asistenciaStore.createIndex('curso', 'curso', { unique: false });
+                    asistenciaStore.createIndex('hora', 'hora', { unique: false });
                     asistenciaStore.createIndex('asignatura', 'asignatura', { unique: false });
                     asistenciaStore.createIndex('periodo', 'periodo', { unique: false });
                 }

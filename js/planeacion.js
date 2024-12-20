@@ -15,16 +15,7 @@ class PlaneacionManager {
         //this.loadInitialData();
         if (window.location.hash == "#planeaciones") {
             console.log('App: Loading initial data based on hash');
-            this.loadInitialData();
-        }
-    }
-
-    async loadInitialData() {
-        try {
-            this.planeaciones = await db.getAll('planeaciones');
-            this.updatePlaneacionesContent();
-        } catch (e) {
-            console.error('Error loading initial data:', e);
+            //this.loadInitialData();
         }
     }
 
@@ -110,7 +101,7 @@ class PlaneacionManager {
             <div class="space-y-6">
                 <div class="flex justify-between items-center">
                     <h2 class="text-2xl font-bold text-gray-800">
-                        ${planeacion ? 'Editar' : 'Crear'} Planeación
+                        ${isEdit ? 'Editar' : 'Crear'} Planeación
                     </h2>
                     <button id="btn-volver" class="text-gray-600 hover:text-gray-800">
                         Volver
@@ -217,7 +208,7 @@ class PlaneacionManager {
                         </button>
                         <button type="submit" 
                                 class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
-                            ${planeacion ? 'Actualizar' : 'Crear'} Planeación
+                            ${isEdit ? 'Actualizar' : 'Crear'} Planeación
                         </button>
                     </div>
                 </form>
@@ -226,103 +217,108 @@ class PlaneacionManager {
     }
 
     async updatePlaneacionesContent() {
-        const encuadres = await db.getAll('encuadres');
-        const planesDeArea = await db.getAll('planesDeArea');
+        try {
+            this.planeaciones = await db.getAll('planeaciones');
+            const encuadres = await db.getAll('encuadres');
+            const planesDeArea = await db.getAll('planesDeArea');
 
-        elements.content.innerHTML = `
-            <div class="space-y-4">
-                <div class="flex justify-between items-center">
-                    <h2 class="text-2xl font-semibold text-gray-800">Planeaciones</h2>
-                    <div class="space-x-2">
-                        <button id="btn-exportar-planeacion" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                            📤
-                        </button>
-                        <button id="btn-importar-planeacion" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">
-                            📥
-                        </button>
-                        <button class="new-planeacion-button bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
-                            ➕
-                        </button>
-                    </div>
-                </div>
-                <div class="flex space-x-4 mb-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Asignatura</label>
-                        <div class="flex items-center">
-                            <input type="text" id="asignatura-filter" placeholder="Filtrar por asignatura" class="mt-1 block rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <button id="asignatura-filter-button" class="ml-2 text-gray-500 hover:text-gray-700">
-                                🔍
+            elements.content.innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-semibold text-gray-800">Planeaciones</h2>
+                        <div class="space-x-2">
+                            <button id="btn-exportar-planeacion" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                📤
+                            </button>
+                            <button id="btn-importar-planeacion" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">
+                                📥
+                            </button>
+                            <button class="new-planeacion-button bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+                                ➕
                             </button>
                         </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Encuadre</label>
-                        <div class="flex items-center">
-                            <input type="text" id="encuadre-filter" placeholder="Filtrar por encuadre" class="mt-1 block rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <button id="encuadre-filter-button" class="ml-2 text-gray-500 hover:text-gray-700">
-                                🔍
-                            </button>
+                    <div class="flex space-x-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Asignatura</label>
+                            <div class="flex items-center">
+                                <input type="text" id="asignatura-filter" placeholder="Filtrar por asignatura" class="mt-1 block rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <button id="asignatura-filter-button" class="ml-2 text-gray-500 hover:text-gray-700">
+                                    🔍
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Encuadre</label>
+                            <div class="flex items-center">
+                                <input type="text" id="encuadre-filter" placeholder="Filtrar por encuadre" class="mt-1 block rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <button id="encuadre-filter-button" class="ml-2 text-gray-500 hover:text-gray-700">
+                                    🔍
+                                </button>
+                            </div>
                         </div>
                     </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="px-6 py-3 text-left border-b">Fecha</th>
+                                    <th class="px-6 py-3 text-left border-b">Asignatura</th>
+                                    <th class="px-6 py-3 text-left border-b">Tema</th>
+                                    <th class="px-6 py-3 text-left border-b">Periodos</th>
+                                    <th class="px-6 py-3 text-left border-b">Encuadre</th>
+                                    <th class="px-6 py-3 text-left border-b">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${this.planeaciones
+                                    .map(planeacion => {
+                                        const encuadre = encuadres.find(e => e.id === planeacion.encuadreId);
+                                        const planArea = encuadre ? planesDeArea.find(p => p.id === encuadre.planDeAreaId) : null;
+                                        const encuadreText = planArea ? `${planArea.asignatura} - Grado ${planArea.grado} - Periodo ${encuadre.periodo}` : 'N/A';
+                                        return `
+                                            <tr class="hover:bg-gray-50">
+                                                <td class="px-6 py-4 whitespace-nowrap">${planeacion.fecha}</td>
+                                                <td class="px-6 py-4 whitespace-nowrap">${planeacion.asignatura}</td>
+                                                <td class="px-6 py-4 whitespace-nowrap">${planeacion.tema}</td>
+                                                <td class="px-6 py-4 whitespace-nowrap">${planeacion.periodosClase}</td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    ${encuadreText}
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <button class="edit-button text-blue-600 hover:text-blue-900 mr-3" data-id="${planeacion.id}">
+                                                        Editar
+                                                    </button>
+                                                    <button class="view-button text-green-600 hover:text-green-900 mr-3" data-id="${planeacion.id}">
+                                                        Ver
+                                                    </button>
+                                                    <button class="delete-button text-red-600 hover:text-red-900" data-id="${planeacion.id}">
+                                                        Eliminar
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full bg-white">
-                        <thead>
-                            <tr class="bg-gray-100">
-                                <th class="px-6 py-3 text-left border-b">Fecha</th>
-                                <th class="px-6 py-3 text-left border-b">Asignatura</th>
-                                <th class="px-6 py-3 text-left border-b">Tema</th>
-                                <th class="px-6 py-3 text-left border-b">Periodos</th>
-                                <th class="px-6 py-3 text-left border-b">Encuadre</th>
-                                <th class="px-6 py-3 text-left border-b">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${this.planeaciones
-                                .map(planeacion => {
-                                    const encuadre = encuadres.find(e => e.id === planeacion.encuadreId);
-                                    const planArea = encuadre ? planesDeArea.find(p => p.id === encuadre.planDeAreaId) : null;
-                                    const encuadreText = planArea ? `${planArea.asignatura} - Grado ${planArea.grado} - Periodo ${encuadre.periodo}` : 'N/A';
-                                    return `
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="px-6 py-4 whitespace-nowrap">${planeacion.fecha}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap">${planeacion.asignatura}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap">${planeacion.tema}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap">${planeacion.periodosClase}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                ${encuadreText}
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <button class="edit-button text-blue-600 hover:text-blue-900 mr-3" data-id="${planeacion.id}">
-                                                    Editar
-                                                </button>
-                                                <button class="view-button text-green-600 hover:text-green-900 mr-3" data-id="${planeacion.id}">
-                                                    Ver
-                                                </button>
-                                                <button class="delete-button text-red-600 hover:text-red-900" data-id="${planeacion.id}">
-                                                    Eliminar
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    `;
-                                }).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        `;
+            `;
 
-        this.setupEventListeners();
-        
-        const asignaturaFilterButton = document.getElementById('asignatura-filter-button');
-        const encuadreFilterButton = document.getElementById('encuadre-filter-button');
+            this.setupEventListeners();
+            
+            const asignaturaFilterButton = document.getElementById('asignatura-filter-button');
+            const encuadreFilterButton = document.getElementById('encuadre-filter-button');
 
-        asignaturaFilterButton.addEventListener('click', async () => {
-            await this.filterPlaneaciones();
-        });
-        encuadreFilterButton.addEventListener('click', async () => {
-            await this.filterPlaneaciones();
-        });
+            asignaturaFilterButton.addEventListener('click', async () => {
+                await this.filterPlaneaciones();
+            });
+            encuadreFilterButton.addEventListener('click', async () => {
+                await this.filterPlaneaciones();
+            });
+        } catch (e) {
+            console.error('Error loading planeaciones:', e);
+        }
     }
 
     async filterPlaneaciones() {

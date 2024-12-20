@@ -9,23 +9,6 @@ function generateUniqueId(asignatura, grado) {
     return `${asignatura}-${grado}`;
 }
 
-// Load initial data from IndexedDB
-async function loadInitialData() {
-    try {
-        planesDeArea = await db.getAll('planesDeArea');
-        console.log('PlanesDeArea: Initial data loaded:', planesDeArea);
-        updatePlanesDeAreaContent();
-    } catch (e) {
-        console.error('PlanesDeArea: Error loading initial data:', e);
-    }
-}
-
-// Load data when module is imported
-//loadInitialData();
-if (window.location.hash == "#planes") {
-    console.log('App: Loading initial data based on hash');
-    this.loadInitialData();
-}
 
 // Validar estructura del plan
 function isValidPlan(plan) {
@@ -551,16 +534,21 @@ function initializeFormEventListeners(plan = null) {
 }
 
 // Update main content
-function updatePlanesDeAreaContent() {
+async function updatePlanesDeAreaContent() {
     console.log('PlanesDeArea: Updating content');
     const content = document.getElementById('content');
     if (!content) {
         console.error('PlanesDeArea: Content element not found');
         return;
     }
-    content.innerHTML = renderPlanesDeArea();
-    initializeEventListeners();
-    console.log('PlanesDeArea: Content updated');
+    try {
+        planesDeArea = await db.getAll('planesDeArea');
+        content.innerHTML = renderPlanesDeArea();
+        initializeEventListeners();
+        console.log('PlanesDeArea: Content updated');
+    } catch (e) {
+        console.error('PlanesDeArea: Error loading data:', e);
+    }
 }
 
 // Export the function

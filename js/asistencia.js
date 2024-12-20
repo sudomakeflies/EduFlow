@@ -38,36 +38,10 @@ function getEstudiantesPorCurso(curso) {
         .sort();
 }
 
-// Función para obtener la hora actual en formato HH:MM
+// Función para obtener la hora actual en formato HH:MM:SS
 function getHoraActual() {
     const now = new Date();
-    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-}
-
-// Función para obtener los ausentes de un curso, fecha, hora y periodo específicos
-async function getAusentes(fecha, curso, hora, periodo) {
-    try {
-        const planilla = await db.get('asistencia', `${fecha}-${curso}-${hora}-${periodo}`);
-        return { 
-            ausentes: planilla?.ausentes || [],
-            excusasJustificadas: planilla?.excusasJustificadas || []
-        };
-    } catch (e) {
-        console.error('Error getting ausentes:', e);
-        return { ausentes: [], excusasJustificadas: [] };
-        return [];
-    }
-}
-
-// Función para obtener la asignatura de una planilla
-async function getAsignatura(fecha, curso, hora, periodo) {
-    try {
-        const planilla = await db.get('asistencia', `${fecha}-${curso}-${hora}-${periodo}`);
-        return planilla?.asignatura || '';
-    } catch (e) {
-        console.error('Error getting asignatura:', e);
-        return '';
-    }
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 }
 
 // Función para guardar la asistencia
@@ -277,15 +251,13 @@ export function renderAsistenciaSection() {
 }
 
 // Función para inicializar los eventos de la sección de asistencia
-export function initializeAsistencia() {
+export async function initializeAsistencia() {
     console.log('Inicializando asistencia...');
     
     // Actualizar la lista de planillas inmediatamente
     const listaPlanillas = document.getElementById('lista-planillas');
     if (listaPlanillas) {
-        renderizarListaPlanillas().then(html => {
-            listaPlanillas.innerHTML = html;
-        });
+        listaPlanillas.innerHTML = await renderizarListaPlanillas();
     }
     
     // Exponer funciones necesarias para los eventos onclick en la tabla
@@ -307,19 +279,34 @@ export function initializeAsistencia() {
             
             // Establecer la asignatura
             if (asignaturaSelect) {
-                const asignatura = await getAsignatura(fecha, curso, hora, periodo);
+                const planillas = await db.getAll('asistencia');
+                const planilla = planillas.find(p => 
+                    p.fecha === fecha && 
+                    p.hora === hora && 
+                    p.curso === curso && 
+                    p.periodo === periodo
+                );
+                const asignatura = planilla?.asignatura || '';
+                console.log('Asignatura:', asignatura);
                 asignaturaSelect.value = asignatura;
             }
             
             const planillaContainer = document.getElementById('planilla-container');
             if (planillaContainer) {
                 const estudiantes = getEstudiantesPorCurso(curso);
-                //const ausentes = await getAusentes(fecha, curso, hora);
-                const { ausentes, excusasJustificadas } = await getAusentes(fecha, curso, hora, periodo);
+                const planillas = await db.getAll('asistencia');
+                const planilla = planillas.find(p => 
+                    p.fecha === fecha && 
+                    p.hora === hora && 
+                    p.curso === curso && 
+                    p.periodo === periodo
+                );
+                const ausentes = planilla?.ausentes || [];
+                const excusasJustificadas = planilla?.excusasJustificadas || [];
                 
                 planillaContainer.innerHTML = renderizarPlanillaConEstudiantes(
-                    estudiantes, 
-                    ausentes, 
+                    estudiantes,
+                    ausentes,
                     excusasJustificadas
                 );
                 
@@ -413,7 +400,7 @@ export function initializeAsistencia() {
             if (formPlanilla && listaPlanillas) {
                 formPlanilla.classList.remove('hidden');
                 listaPlanillas.classList.add('hidden');
-                formPlanilla.dataset.editandoHora = ''; // Nueva planilla
+                formPlanilla.dataset.editandoHora = getHoraActual(); // Nueva planilla con hora actual
                 
                 // Resetear el formulario
                 const cursoSelect = document.getElementById('curso-select');
@@ -520,8 +507,7 @@ export function initializeAsistencia() {
                 .filter(cb => cb.checked)
                 .map(cb => cb.dataset.estudiante);
 
-            // Usar la hora existente si está editando, o crear una nueva
-            const hora = formPlanilla?.dataset.editandoHora || getHoraActual();
+            const hora = formPlanilla.dataset.editandoHora;
             
             if (await guardarAsistencia(fecha, curso, hora, asignatura, periodo, ausentes, excusasJustificadas)) {
                 // Volver a la lista
@@ -541,18 +527,25 @@ export function initializeAsistencia() {
     const fechaSelect = document.getElementById('fecha-select');
     const periodoSelect = document.getElementById('periodo-select');
     
-    function actualizarPlanilla() {
+    async function actualizarPlanilla() {
         const curso = cursoSelect?.value;
         const fecha = fechaSelect?.value;
         const periodo = periodoSelect?.value;
         const formPlanilla = document.getElementById('form-planilla');
-        const hora = formPlanilla?.dataset.editandoHora || getHoraActual();
+        const hora = formPlanilla?.dataset.editandoHora;
         
         if (curso && fecha && periodo) {
             const planillaContainer = document.getElementById('planilla-container');
             if (planillaContainer) {
                 const estudiantes = getEstudiantesPorCurso(curso);
                 planillaContainer.innerHTML = renderizarPlanillaConEstudiantes(estudiantes);
+            }
+            
+            // Actualizar la asignatura solo si estamos editando
+            const asignaturaSelect = document.getElementById('asignatura-select');
+            if (asignaturaSelect && formPlanilla?.dataset.editandoHora) {
+                const planilla = await db.get('asistencia', `${fecha}-${hora}-${curso}-${periodo}`);
+                asignaturaSelect.value = planilla?.asignatura || '';
             }
         }
     }

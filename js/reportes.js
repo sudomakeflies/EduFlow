@@ -159,8 +159,11 @@ function formatReportOutput(report) {
 
 async function getAttendanceData(grade, subject, period) {
     try {
-        const attendanceRecords = await db.getByIndex('asistencia', 'grado', grade);
-        const filteredRecords = attendanceRecords.filter(record => record.periodo === period);
+        const attendanceRecords = await db.getByIndex('asistencia', 'curso', grade);
+        const filteredRecords = attendanceRecords.filter(record => 
+            record.periodo === period && 
+            record.asignatura === subject
+        );
         return filteredRecords;
     } catch (error) {
         console.error("Error fetching attendance data:", error);

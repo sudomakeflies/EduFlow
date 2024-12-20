@@ -9,23 +9,6 @@ function generateUniqueId(planDeAreaId, periodo) {
     return `${planDeAreaId}-${periodo}`;
 }
 
-// Load initial data from IndexedDB
-async function loadInitialData() {
-    try {
-        encuadres = await db.getAll('encuadres');
-        console.log('Encuadres: Initial data loaded:', encuadres);
-        updateEncuadresContent();
-    } catch (e) {
-        console.error('Encuadres: Error loading initial data:', e);
-    }
-}
-
-// Load data when module is imported
-//loadInitialData();
-if (window.location.hash == "#encuadres") {
-    console.log('App: Loading initial data based on hash');
-    this.loadInitialData();
-}
 
 // Load planes de area from IndexedDB
 async function loadPlanesDeArea() {
@@ -435,9 +418,14 @@ async function updateEncuadresContent() {
         console.error('Encuadres: Content element not found');
         return;
     }
-    content.innerHTML = await renderEncuadres();
-    initializeEventListeners();
-    console.log('Encuadres: Content updated');
+    try {
+        encuadres = await db.getAll('encuadres');
+        content.innerHTML = await renderEncuadres();
+        initializeEventListeners();
+        console.log('Encuadres: Content updated');
+    } catch (e) {
+        console.error('Encuadres: Error loading data:', e);
+    }
 }
 
 // Export the function

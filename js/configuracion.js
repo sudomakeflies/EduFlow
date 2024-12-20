@@ -1,4 +1,5 @@
 import db from './db.js';
+import { updateContent } from './ui.js';
 
 async function backupDatabase() {
     await db.init();
@@ -48,6 +49,14 @@ async function restoreDatabase() {
                     }
                 }
                 alert('Base de datos restaurada exitosamente.');
+                requestAnimationFrame(() => {
+                    updateContent('planes');
+                    updateContent('encuadres');
+                    updateContent('planeaciones');
+                    updateContent('asistencia');
+                    updateContent('valoracion');
+                    updateContent('configuracion');
+                });
             } catch (error) {
                 console.error('Error al restaurar la base de datos:', error);
                 alert('Error al restaurar la base de datos.');
